@@ -1,0 +1,47 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:Thesis.ViewModels"
+        mc:Ignorable="d"
+        x:Class="Thesis.Views.RenameGraphDialog"
+        x:DataType="vm:RenameGraphDialogViewModel"
+        Title="Переименовать граф"
+        Width="460"
+        Height="240"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Padding="24"
+            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+        <StackPanel Spacing="18">
+            <StackPanel Spacing="6">
+                <TextBlock Text="Переименовать граф"
+                           FontSize="26"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+                <TextBlock Text="Введите новое название графа"
+                           FontSize="15"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+            </StackPanel>
+
+            <TextBox Text="{Binding GraphName, UpdateSourceTrigger=PropertyChanged}"
+                     PlaceholderText="Название графа"
+                     Height="46"
+                     FontSize="18" />
+
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="12">
+                <Button Content="Отмена"
+                        Width="120"
+                        Click="Cancel_Click" />
+
+                <Button Content="Сохранить"
+                        Width="120"
+                        IsEnabled="{Binding CanSave}"
+                        Click="Save_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

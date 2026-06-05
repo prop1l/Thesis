@@ -1,0 +1,214 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Thesis.ViewModels"
+        xmlns:models="clr-namespace:Thesis.Models"
+        mc:Ignorable="d"
+        x:Class="Thesis.Views.Welcome"
+        x:DataType="vm:WelcomeViewModel"
+        Title="GraphIS"
+        Width="1150"
+        Height="800"
+        MinWidth="1150"
+        MinHeight="800"
+        Background="Transparent"
+        WindowStartupLocation="CenterScreen"
+        Icon="/Assets/avalonia-logo.ico">
+
+    <Window.Styles>
+        <!-- Стиль для карточек графов -->
+        <Style Selector="Button.graph-card-button">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="20" />
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Width" Value="330"/>
+        </Style>
+
+        <!-- Существующие стили -->
+        <Style Selector="Border.header-card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="18,14" />
+            <Setter Property="BoxShadow" Value="0 6 18 0 #22000000" />
+        </Style>
+
+        <Style Selector="Border.main-card">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" />
+            <Setter Property="CornerRadius" Value="28" />
+            <Setter Property="Padding" Value="28" />
+            <Setter Property="BoxShadow" Value="0 10 30 0 #25000000" />
+        </Style>
+
+        <Style Selector="TextBlock.title">
+            <Setter Property="FontSize" Value="30" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.subtitle">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+        </Style>
+
+        <Style Selector="TextBox.name-box">
+            <Setter Property="Height" Value="56" />
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="18,0" />
+        </Style>
+
+        <Style Selector="Button.add-button">
+            <Setter Property="Height" Value="56" />
+            <Setter Property="Padding" Value="20,0" />
+            <Setter Property="CornerRadius" Value="16" />
+        </Style>
+    </Window.Styles>
+
+    <Border Background="{DynamicResource SystemControlBackgroundBaseHighBrush}">
+        <Grid RowDefinitions="90,*,200"
+              Margin="24">
+
+            <!-- Шапка -->
+            <Border Grid.Row="0" Classes="header-card">
+                <Grid ColumnDefinitions="Auto,14,*,Auto,12,Auto"
+                      VerticalAlignment="Center">
+
+                    <Image Grid.Column="0"
+                           Source="/Assets/Icon.png"
+                           Width="34"
+                           Height="34"
+                           VerticalAlignment="Center"
+                           Tapped="Image_Tapped"/>
+
+                    <StackPanel Grid.Column="2"
+                                Spacing="2"
+                                VerticalAlignment="Center">
+                        <TextBlock Classes="title"
+                                   Text="GraphIS"
+                                   FontSize="24"/>
+                        <TextBlock Classes="subtitle"
+                                   Text="Информационная система для работы с графами"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="3"
+                               VerticalAlignment="Center"
+                               FontSize="16"
+                               Text="Тёмная тема"
+                               Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+
+                    <ToggleSwitch Grid.Column="5"
+                                  Name="ThemeToggle"
+                                  VerticalAlignment="Center"
+                                  OffContent="☀"
+                                  OnContent="🌙"
+                                  IsChecked="{Binding IsDarkTheme}"
+                                  IsCheckedChanged="ThemeToggle_IsCheckedChanged"/>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1"
+                  Margin="0,20,0,20">
+                <Border Classes="main-card"
+                        Padding="20">
+                    <Grid RowDefinitions="Auto,16,*">
+                        <StackPanel Grid.Row="0"
+                                    Spacing="4">
+                            <TextBlock Classes="title"
+                                       FontSize="28"
+                                       Text="Мои графы" />
+                            <TextBlock Classes="subtitle"
+                                       FontSize="16"
+                                       Text="Выберите граф из сохранённых проектов." />
+                        </StackPanel>
+                        <ScrollViewer Grid.Row="2"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl x:Name="GraphsList"
+                                          ItemsSource="{Binding GraphItems}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"
+                                                   HorizontalAlignment="Stretch" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Margin="8,8,8,8"
+                                                MinHeight="120"
+                                                HorizontalAlignment="Stretch"
+                                                Classes="graph-card-button"
+                                                CommandParameter="{Binding}"
+                                                Click="GraphCard_Click">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Переименовать"
+                                                              Click="RenameGraphMenuItem_Click"
+                                                              CommandParameter="{Binding}" />
+                                                    <MenuItem Header="Удалить"
+                                                              Command="{Binding #GraphsList.DataContext.DeleteGraphCommand}"
+                                                              CommandParameter="{Binding}" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+
+                                            <StackPanel Spacing="8">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="22"
+                                                           FontWeight="SemiBold"
+                                                           HorizontalAlignment="Stretch" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Добавление -->
+            <Grid Grid.Row="2" RowDefinitions="*,Auto,*">
+                <Border Grid.Row="1"
+                        Classes="main-card"
+                        HorizontalAlignment="Center"
+                        Width="820">
+                    <StackPanel Spacing="22">
+                        <StackPanel Spacing="6">
+                            <TextBlock Classes="title"
+                                       FontSize="34"
+                                       Text="{Binding AddNewGraphTitle}"/>
+                            <TextBlock Classes="subtitle"
+                                       FontSize="17"
+                                       Text="{Binding AddNewGraphSubtitle}"/>
+                        </StackPanel>
+
+                        <Grid ColumnDefinitions="*,18,220">
+                            <TextBox Grid.Column="0"
+                                     Classes="name-box"
+                                     VerticalContentAlignment="Center"
+                                     PlaceholderText="Введите название графа"
+                                     Text="{Binding NewGraphName, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <Button Grid.Column="2"
+                                    Classes="add-button"
+                                    FontSize="20"
+                                    Command="{Binding AddGraphCommand}">
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="10"
+                                            VerticalAlignment="Center">
+                                    <TextBlock Text="Добавить"
+                                               FontSize="22"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+        </Grid>
+    </Border>
+</Window>

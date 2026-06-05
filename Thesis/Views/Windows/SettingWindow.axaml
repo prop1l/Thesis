@@ -1,0 +1,316 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Thesis.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1100"
+        d:DesignHeight="720"
+        x:Class="Thesis.Views.SettingWindow"
+        x:DataType="vm:SettingWindowViewModel"
+        Background="{DynamicResource SystemControlBackgroundBaseHighBrush}"
+        Title="Настройки внешнего вида"
+        Width="1150"
+        Height="800"
+        MinWidth="1150"
+        MinHeight="800"
+        Icon="/Assets/avalonia-logo.ico"
+        WindowStartupLocation="CenterOwner">
+
+
+
+    <Grid ColumnDefinitions="250,*"
+          RowDefinitions="Auto,*">
+
+        <Border Grid.ColumnSpan="2"
+                Padding="20,14"
+                BorderBrush="{DynamicResource SystemControlStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1"
+                Background="{DynamicResource SystemControlBackgroundBaseHighBrush}"> <!-- Background="{DynamicResource SystemControlAcrylicWindowBrush}" -->
+                <DockPanel LastChildFill="True">
+
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Настройки приложения"
+                                   FontSize="24"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="Управление внешним видом, редактором и уведомлениями"
+                                   Opacity="0.70" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="12"
+                                DockPanel.Dock="Right"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Right">
+                        <ToggleSwitch Grid.Column="5"
+                                      Name="ThemeToggle"
+                                      VerticalAlignment="Center"
+                                      OffContent="☀"
+                                      OnContent="🌙"
+                                      IsChecked="False"
+                                      IsCheckedChanged="ThemeToggle_IsCheckedChanged"/>
+                        <Button Content="Сохранить"
+                                MinWidth="90" />
+                    </StackPanel>
+                </DockPanel>
+        </Border>
+
+        <Border Grid.Row="1"
+                Padding="14"
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                BorderBrush="{DynamicResource SystemControlStrokeColorDefaultBrush}"
+                BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="100"/>
+                </Grid.RowDefinitions>
+                <ScrollViewer x:Name="SettingsScrollViewer">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Разделы"
+                                   Margin="4,4,4,8"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.65"/>
+
+
+                        <Button Content="Тема"
+                                HorizontalContentAlignment="Left"
+                                Click="ScrollToAppearanceSection"/>
+
+                        <Button Content="Акцентный цвет"
+                                HorizontalContentAlignment="Left"
+                                Click="ScrollToAccentSection"/>
+
+
+                        <!--Button Content="Редактор"
+                        HorizontalContentAlignment="Left"
+                        Click="ScrollToEditorSection"/ -->
+
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!--StackPanel Grid.Row="1">
+                <TextBlock Text="Профиль"
+                Margin="4,0,4,4"
+                FontSize="13"
+                FontWeight="SemiBold"
+                Opacity="0.65" />
+
+                <Border Padding="12"
+                CornerRadius="12"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+                <StackPanel Spacing="6">
+                <TextBlock Text="Developer"
+                FontWeight="SemiBold" />
+                <TextBlock Text="Профиль конфигурации рабочего стола"
+                FontSize="13"
+                Opacity="0.70"
+                TextWrapping="Wrap"/>
+                </StackPanel>
+                </Border>
+                </StackPanel-->
+            </Grid>
+        </Border>
+
+        <ScrollViewer x:Name="ContentScrollViewer"
+                      Grid.Row="1"
+                      Grid.Column="1">
+            <StackPanel Margin="24"
+                        Spacing="18">
+
+                <TextBlock Text="Внешний вид"
+                           FontSize="30"
+                           FontWeight="Bold" />
+
+                <TextBlock Text="Настройка визуального стиля приложения и основного поведения интерфейса."
+                           MaxWidth="720"
+                           Opacity="0.75" />
+
+
+                <Border x:Name="AppearanceSection"
+                        Padding="20"
+                        CornerRadius="16"
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.3"/>
+                        </Transitions>
+                    </Border.Transitions>
+
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Тема"
+                                   FontSize="18"
+                                   FontWeight="SemiBold" />
+
+                        <Grid ColumnDefinitions="*,Auto"
+                              RowDefinitions="Auto,Auto,Auto"
+                              RowSpacing="14">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Использовать тёмную тему"
+                                           FontWeight="Medium" />
+                                <TextBlock Text="Переключение между светлой и тёмной темой приложения."
+                                           FontSize="13"
+                                           Opacity="0.70" />
+                            </StackPanel>
+                            <ToggleSwitch Grid.Column="1"
+                                          IsChecked="{Binding IsDarkTheme}"/>
+
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+
+                <Border x:Name="AccentSection"
+                        Padding="20"
+                        CornerRadius="16"
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.3"/>
+                        </Transitions>
+                    </Border.Transitions>
+
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="Акцентный цвет"
+                                   FontSize="18"
+                                   FontWeight="SemiBold" />
+
+                        <TextBlock Text="Выберите основной цвет выделения для интерактивных элементов."
+                                   FontSize="13"
+                                   Opacity="0.70" />
+
+                        <WrapPanel Orientation="Horizontal"
+                                   ItemWidth="48"
+                                   ItemHeight="48">
+
+                            <Button Width="40"
+                                    Height="40"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding SetAccentCommand}"
+                                    CommandParameter="#4F46E5">
+                                <Border Width="28"
+                                        Height="28"
+                                        CornerRadius="14"
+                                        Background="#4F46E5" />
+                            </Button>
+
+                            <Button Width="40"
+                                    Height="40"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding SetAccentCommand}"
+                                    CommandParameter="#7C83FF">
+                                <Border Width="28"
+                                        Height="28"
+                                        CornerRadius="14"
+                                        Background="#7C83FF" />
+                            </Button>
+
+                            <Button Width="40"
+                                    Height="40"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding SetAccentCommand}"
+                                    CommandParameter="#8E24AA">
+                                <Border Width="28"
+                                        Height="28"
+                                        CornerRadius="14"
+                                        Background="#8E24AA" />
+                            </Button>
+
+                            <Button Width="40"
+                                    Height="40"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding SetAccentCommand}"
+                                    CommandParameter="#EF6C00">
+                                <Border Width="28"
+                                        Height="28"
+                                        CornerRadius="14"
+                                        Background="#EF6C00" />
+                            </Button>
+
+                            <Button Width="40"
+                                    Height="40"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding SetAccentCommand}"
+                                    CommandParameter="#C62828">
+                                <Border Width="28"
+                                        Height="28"
+                                        CornerRadius="14"
+                                        Background="#C62828" />
+                            </Button>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!--Border x:Name="EditorSection"
+                Padding="20"
+                CornerRadius="16"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+
+                <Border.Transitions>
+                <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.3"/>
+                </Transitions>
+                </Border.Transitions>
+
+                <StackPanel Spacing="16">
+                <TextBlock Text="Редактор"
+                FontSize="18"
+                FontWeight="SemiBold" />
+
+                <Grid ColumnDefinitions="*,*"
+                ColumnSpacing="16"
+                RowDefinitions="Auto,Auto">
+                <StackPanel Spacing="8">
+                <TextBlock Text="Имя пользователя" />
+                <TextBox PlaceholderText="Введите имя профиля"
+                Text="{Binding UserName}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1"
+                Spacing="8">
+                <TextBlock Text="Стиль интерфейса" />
+                <ComboBox SelectedIndex="0">
+                <ComboBoxItem Content="Fluent" />
+                <ComboBoxItem Content="Simple" />
+                </ComboBox>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1"
+                Spacing="8"
+                Margin="0,12,0,0">
+                <TextBlock Text="Стартовая страница" />
+                <ComboBox SelectedIndex="0">
+                <ComboBoxItem Content="Панель управления" />
+                <ComboBoxItem Content="Проекты" />
+                <ComboBoxItem Content="Редактор" />
+                </ComboBox>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1"
+                Grid.Column="1"
+                Spacing="8"
+                Margin="0,12,0,0">
+                <TextBlock Text="Поиск настроек" />
+                <TextBox PlaceholderText="Введите текст для фильтрации..." />
+                </StackPanel>
+                </Grid>
+                </StackPanel>
+                </Border-->
+
+                <Border Padding="2000">
+
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

@@ -1,0 +1,37 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Thesis.App"
+             xmlns:local="using:Thesis"
+             RequestedThemeVariant="Default">
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#FF202124"/>
+                    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#FF2B2D31"/>
+                    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#FF25282C"/>
+                </ResourceDictionary>
+
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#FFF6F6F6"/>
+                    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#FFEAEAEA"/>
+                    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#FFFFFFFF"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+  
+    <Application.Styles>
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <ColorPaletteResources x:Key="Light" Accent="#4F46E5"/>
+                <ColorPaletteResources x:Key="Dark" Accent="#7C83FF"/>
+            </FluentTheme.Palettes>
+        </FluentTheme>
+    </Application.Styles>
+</Application>

@@ -17,6 +17,7 @@ public partial class GraphEditorViewModel : ObservableObject
     private string _currentGraphName = string.Empty;
     private readonly Dictionary<string, decimal> _logicalEdgeWeights = new();
     private double _zoomLevel = 1.0;
+    private bool _isGraphLoaded;
 
     [ObservableProperty] private string graphName = string.Empty;
     [ObservableProperty] private ObservableCollection<Node> nodes = new();
@@ -195,6 +196,8 @@ public partial class GraphEditorViewModel : ObservableObject
 
     public void LoadGraph(string graphName)
     {
+        _isGraphLoaded = false;
+
         _currentGraphName = graphName;
         GraphName = graphName;
 
@@ -210,6 +213,7 @@ public partial class GraphEditorViewModel : ObservableObject
             GraphKind = GraphKind.UndirectedUnweighted;
             SelectedGraphKindOption = GraphKindOptions.First(x => x.Value == GraphKind);
             SubscribeToGraphStyle(GraphStyle);
+            _isGraphLoaded = true;
             return;
         }
 
@@ -232,6 +236,8 @@ public partial class GraphEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(GraphKind));
         OnPropertyChanged(nameof(IsDirectedGraph));
         OnPropertyChanged(nameof(IsWeightedGraph));
+
+        _isGraphLoaded = true;
     }
 
     [RelayCommand]
@@ -349,11 +355,30 @@ public partial class GraphEditorViewModel : ObservableObject
 
     public void SaveGraph()
     {
+        if (!_isGraphLoaded || string.IsNullOrWhiteSpace(_currentGraphName))
+            return;
+
         var data = new GraphData
         {
             Name = GraphName,
-            Nodes = Nodes,
-            Edges = new ObservableCollection<Edge>(Edges.Select(e => e.GetEdge())),
+            Nodes = new ObservableCollection<Node>(Nodes.Select(n => new Node
+            {
+                Id = n.Id,
+                Label = n.Label,
+                X = n.X,
+                Y = n.Y,
+                IsVisited = n.IsVisited,
+                IsHighlighted = n.IsHighlighted,
+                DistanceLabel = n.DistanceLabel
+            })),
+            Edges = new ObservableCollection<Edge>(Edges.Select(e => new Edge
+            {
+                Id = e.Id,
+                SourceId = e.SourceId,
+                TargetId = e.TargetId,
+                Label = e.Label,
+                Weight = e.Weight
+            })),
             Style = GraphStyle,
             Kind = GraphKind,
             LastModified = DateTime.Now

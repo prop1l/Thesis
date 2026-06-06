@@ -1,11 +1,12 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using Thesis.Models;
 using Thesis.Models.Graph;
 using Thesis.Services;
 
@@ -14,7 +15,12 @@ namespace Thesis.ViewModels;
 public partial class WelcomeViewModel : ObservableObject
 {
     private readonly ThemeService? _themeService;
-    private readonly string _filePath;
+    private readonly string _appFolder;
+    private readonly string _graphsListFilePath;
+    private readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
 
     public ObservableCollection<GraphItem> GraphItems { get; } = new();
 
@@ -38,12 +44,12 @@ public partial class WelcomeViewModel : ObservableObject
     {
         _themeService = themeService;
 
-        var appFolder = Path.Combine(
+        _appFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "GraphIS");
 
-        Directory.CreateDirectory(appFolder);
-        _filePath = Path.Combine(appFolder, "graphs.json");
+        Directory.CreateDirectory(_appFolder);
+        _graphsListFilePath = Path.Combine(_appFolder, "graphs.json");
 
         LoadGraphs();
 
@@ -73,12 +79,17 @@ public partial class WelcomeViewModel : ObservableObject
         if (GraphItems.Any(x => string.Equals(x.Name, trimmedName, StringComparison.OrdinalIgnoreCase)))
             return;
 
-        GraphItems.Add(new GraphItem
+        var item = new GraphItem
         {
             Name = trimmedName
-        });
+        };
 
+        GraphItems.Add(item);
         SaveGraphs();
+
+        var graphData = CreateEmptyGraphData(trimmedName);
+        SaveGraphData(trimmedName, graphData);
+
         NewGraphName = string.Empty;
     }
 
@@ -91,8 +102,22 @@ public partial class WelcomeViewModel : ObservableObject
         if (item is null)
             return;
 
-        if (GraphItems.Remove(item))
-            SaveGraphs();
+        if (!GraphItems.Remove(item))
+            return;
+
+        SaveGraphs();
+
+        try
+        {
+            var graphFilePath = GetGraphFilePath(item.Name);
+
+            if (File.Exists(graphFilePath))
+                File.Delete(graphFilePath);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка удаления файла графа {item.Name}: {ex.Message}");
+        }
     }
 
     public bool RenameGraph(GraphItem item, string newName)
@@ -102,35 +127,70 @@ public partial class WelcomeViewModel : ObservableObject
 
         var trimmedName = newName.Trim();
 
-        if (GraphItems.Any(x => !ReferenceEquals(x, item) &&
-                                string.Equals(x.Name, trimmedName, StringComparison.OrdinalIgnoreCase)))
+        if (GraphItems.Any(x =>
+                !ReferenceEquals(x, item) &&
+                string.Equals(x.Name, trimmedName, StringComparison.OrdinalIgnoreCase)))
             return false;
 
-        item.Name = trimmedName;
-        SaveGraphs();
-        return true;
+        var oldName = item.Name;
+        var oldPath = GetGraphFilePath(oldName);
+        var newPath = GetGraphFilePath(trimmedName);
+
+        try
+        {
+            if (!string.Equals(oldName, trimmedName, StringComparison.Ordinal))
+            {
+                if (File.Exists(oldPath))
+                {
+                    if (File.Exists(newPath))
+                        File.Delete(newPath);
+
+                    File.Move(oldPath, newPath);
+                }
+                else
+                {
+                    var newGraphData = CreateEmptyGraphData(trimmedName);
+                    SaveGraphData(trimmedName, newGraphData);
+                }
+            }
+
+            item.Name = trimmedName;
+            SaveGraphs();
+
+            var graphData = LoadGraphData(trimmedName) ?? CreateEmptyGraphData(trimmedName);
+            graphData.Name = trimmedName;
+            SaveGraphData(trimmedName, graphData);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Ошибка переименования графа {oldName} -> {trimmedName}: {ex.Message}");
+            return false;
+        }
     }
 
     private void LoadGraphs()
     {
-        if (!File.Exists(_filePath))
+        if (!File.Exists(_graphsListFilePath))
             return;
 
         try
         {
-            var json = File.ReadAllText(_filePath);
-            var items = JsonSerializer.Deserialize<List<GraphItem>>(json);
+            var json = File.ReadAllText(_graphsListFilePath);
+            var items = JsonSerializer.Deserialize<List<GraphItem>>(json, _jsonOptions);
 
             if (items is null)
                 return;
 
             GraphItems.Clear();
-            foreach (var item in items)
+
+            foreach (var item in items.Where(x => !string.IsNullOrWhiteSpace(x.Name)))
                 GraphItems.Add(item);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Ошибка загрузки графов: {ex.Message}");
+            Console.WriteLine($"Ошибка загрузки списка графов: {ex.Message}");
         }
     }
 
@@ -138,78 +198,111 @@ public partial class WelcomeViewModel : ObservableObject
     {
         try
         {
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            var json = JsonSerializer.Serialize(GraphItems, options);
-            File.WriteAllText(_filePath, json);
+            var items = GraphItems
+                .Where(x => !string.IsNullOrWhiteSpace(x.Name))
+                .Select(x => new GraphItem { Name = x.Name.Trim() })
+                .ToList();
+
+            var json = JsonSerializer.Serialize(items, _jsonOptions);
+            File.WriteAllText(_graphsListFilePath, json);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Ошибка сохранения графов: {ex.Message}");
+            Console.WriteLine($"Ошибка сохранения списка графов: {ex.Message}");
         }
     }
 
-    // Добавьте эти методы в класс WelcomeViewModel (ViewModels/WelcomeViewModel.cs)
-
-    // Метод для загрузки данных графа
     public GraphData? LoadGraphData(string graphName)
     {
-        var graphFilePath = GetGraphFilePath(graphName);
+        if (string.IsNullOrWhiteSpace(graphName))
+            return null;
+
+        var normalizedName = graphName.Trim();
+        var graphFilePath = GetGraphFilePath(normalizedName);
+
         if (!File.Exists(graphFilePath))
-        {
-            // Если файл не существует, создаем новый граф
-            return new GraphData { Name = graphName };
-        }
+            return CreateEmptyGraphData(normalizedName);
 
         try
         {
             var json = File.ReadAllText(graphFilePath);
-            return JsonSerializer.Deserialize<GraphData>(json);
+            var graphData = JsonSerializer.Deserialize<GraphData>(json, _jsonOptions);
+
+            if (graphData is null)
+                return CreateEmptyGraphData(normalizedName);
+
+            graphData.Name = string.IsNullOrWhiteSpace(graphData.Name)
+                ? normalizedName
+                : graphData.Name;
+
+            graphData.Nodes ??= new ObservableCollection<Node>();
+            graphData.Edges ??= new ObservableCollection<Edge>();
+            graphData.Style ??= new GraphStyle();
+
+            return graphData;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Ошибка загрузки графа {graphName}: {ex.Message}");
-            return null;
+            Console.WriteLine($"Ошибка загрузки графа {normalizedName}: {ex.Message}");
+            return CreateEmptyGraphData(normalizedName);
         }
     }
 
     public void SaveGraphData(string graphName, GraphData graphData)
     {
-        if (graphData == null || string.IsNullOrWhiteSpace(graphName))
+        if (graphData is null || string.IsNullOrWhiteSpace(graphName))
             return;
 
-        var appFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "GraphIS");
-
-        Directory.CreateDirectory(appFolder);
-
-        var graphFilePath = Path.Combine(appFolder, $"{graphName}.json");
+        var normalizedName = graphName.Trim();
+        var graphFilePath = GetGraphFilePath(normalizedName);
 
         try
         {
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            var json = JsonSerializer.Serialize(graphData, options);
+            graphData.Name = normalizedName;
+            graphData.Nodes ??= new ObservableCollection<Node>();
+            graphData.Edges ??= new ObservableCollection<Edge>();
+            graphData.Style ??= new GraphStyle();
+            graphData.LastModified = DateTime.Now;
+
+            var json = JsonSerializer.Serialize(graphData, _jsonOptions);
             File.WriteAllText(graphFilePath, json);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Ошибка сохранения графа {graphName}: {ex.Message}");
+            Console.WriteLine($"Ошибка сохранения графа {normalizedName}: {ex.Message}");
         }
     }
 
-    // Если у вас уже есть метод SaveGraphData с 1 параметром, удалите его или переименуйте
+    private GraphData CreateEmptyGraphData(string graphName)
+    {
+        return new GraphData
+        {
+            Name = graphName,
+            Nodes = new ObservableCollection<Node>(),
+            Edges = new ObservableCollection<Edge>(),
+            Style = new GraphStyle(),
+            Kind = GraphKind.UndirectedUnweighted,
+            LastModified = DateTime.Now
+        };
+    }
 
-    // Вспомогательный метод для получения пути к файлу графа
     private string GetGraphFilePath(string graphName)
     {
-        var appFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "GraphIS");
+        var safeFileName = SanitizeFileName(graphName);
 
-        Directory.CreateDirectory(appFolder);
+        if (string.IsNullOrWhiteSpace(safeFileName))
+            safeFileName = "graph";
 
-        // Очищаем имя файла от недопустимых символов
-        string safeFileName = string.Concat(graphName.Split(Path.GetInvalidFileNameChars()));
-        return Path.Combine(appFolder, $"{safeFileName}.json");
+        return Path.Combine(_appFolder, $"{safeFileName}.json");
+    }
+
+    private static string SanitizeFileName(string fileName)
+    {
+        var sanitized = fileName.Trim();
+
+        foreach (var invalidChar in Path.GetInvalidFileNameChars())
+            sanitized = sanitized.Replace(invalidChar.ToString(), string.Empty);
+
+        return sanitized.Trim();
     }
 }

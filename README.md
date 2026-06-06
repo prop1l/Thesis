@@ -38,7 +38,7 @@
 ## Установка и запуск
 ### Запуск приложения (без установки)
 
-1. Скачайте последнюю версию `GraphIS.exe` из раздела [Releases](https://github.com/prop1l/GraphIS/releases)
+1. Скачайте последнюю версию `GraphIS.exe` из раздела [Releases](https://github.com/prop1l/Thesis/releases)
 2. Поместите файл в любую папку на вашем компьютере
 3. Запустите `GraphIS.exe` двойным кликом
 

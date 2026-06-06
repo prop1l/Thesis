@@ -398,20 +398,15 @@ public partial class GraphEditorWindow : Window
         var isSelected = Vm.SelectedEdge?.Id == edge.Id;
 
         IBrush stroke = edge.IsPathEdge
-            ? Brushes.LimeGreen
+            ? Brushes.SeaGreen
             : edge.IsExamined
                 ? Brushes.Orange
                 : isSelected
                     ? Brushes.DodgerBlue
                     : BrushHelper.CreateBrush(style.Stroke);
 
-        IBrush foreground = edge.IsPathEdge
-            ? Brushes.DarkGreen
-            : edge.IsExamined
-                ? Brushes.DarkOrange
-                : isSelected
-                    ? Brushes.DodgerBlue
-                    : BrushHelper.CreateBrush(style.Foreground);
+        IBrush foreground = Brushes.Black;
+        IBrush background = Brushes.White;
 
         var thickness = edge.IsPathEdge
             ? style.StrokeThickness + 3
@@ -441,11 +436,7 @@ public partial class GraphEditorWindow : Window
         visual.WeightText.Text = edge.Weight?.ToString() ?? "0";
         visual.WeightText.Foreground = foreground;
         visual.WeightText.FontSize = style.FontSize;
-        visual.WeightBorder.Background = edge.IsPathEdge
-            ? Brushes.Honeydew
-            : edge.IsExamined
-                ? Brushes.Moccasin
-                : BrushHelper.CreateBrush(style.WeightBackground);
+        visual.WeightBorder.Background = background;
 
         SetEdgeWeightPosition(edge, visual.WeightBorder);
     }

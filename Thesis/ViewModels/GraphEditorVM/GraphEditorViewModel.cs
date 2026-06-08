@@ -35,6 +35,8 @@ public partial class GraphEditorViewModel : ObservableObject
     [ObservableProperty] private bool isDijkstraMode;
     [ObservableProperty] private string dijkstraStatus = "Алгоритм не запущен";
 
+    [ObservableProperty] private string adjacencyMatrixText = string.Empty;
+
     public ObservableCollection<GraphKindOption> GraphKindOptions { get; } = new()
     {
         new GraphKindOption { Value = GraphKind.UndirectedUnweighted, Title = "Неориентированный невзвешенный" },
@@ -108,6 +110,12 @@ public partial class GraphEditorViewModel : ObservableObject
 
         foreach (var edge in linkedEdges)
             edge.Weight = weight;
+    }
+
+    [RelayCommand]
+    private void BuildAdjacencyMatrix()
+    {
+        AdjacencyMatrixText = GetAdjacencyMatrixText();
     }
 
     [RelayCommand]
@@ -238,6 +246,7 @@ public partial class GraphEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(IsWeightedGraph));
 
         _isGraphLoaded = true;
+        AdjacencyMatrixText = GetAdjacencyMatrixText();
     }
 
     [RelayCommand]
@@ -256,6 +265,7 @@ public partial class GraphEditorViewModel : ObservableObject
         });
 
         SaveGraph();
+        AdjacencyMatrixText = GetAdjacencyMatrixText();
     }
 
     public void AddEdge(Node source, Node target)
@@ -298,6 +308,7 @@ public partial class GraphEditorViewModel : ObservableObject
         SelectedNode = null;
 
         SaveGraph();
+        AdjacencyMatrixText = GetAdjacencyMatrixText();
     }
 
     [RelayCommand]
@@ -309,6 +320,7 @@ public partial class GraphEditorViewModel : ObservableObject
         SelectedEdge = null;
         ClearDijkstra();
         SaveGraph();
+        AdjacencyMatrixText = GetAdjacencyMatrixText();
     }
 
     [RelayCommand]
@@ -335,6 +347,7 @@ public partial class GraphEditorViewModel : ObservableObject
 
         ClearDijkstra();
         SaveGraph();
+        AdjacencyMatrixText = GetAdjacencyMatrixText();
     }
 
     [RelayCommand]
@@ -351,6 +364,7 @@ public partial class GraphEditorViewModel : ObservableObject
         SetLogicalWeight(SelectedEdge.SourceId, SelectedEdge.TargetId, newWeight.Value);
         SyncLinkedEdgeWeights(SelectedEdge.SourceId, SelectedEdge.TargetId, newWeight.Value);
         SaveGraph();
+        AdjacencyMatrixText = GetAdjacencyMatrixText();
     }
 
     public void SaveGraph()
@@ -707,6 +721,89 @@ public partial class GraphEditorViewModel : ObservableObject
         }
 
         return result;
+    }
+
+    public string GetAdjacencyMatrixText()
+    {
+        if (Nodes.Count == 0)
+            return "Граф пуст.";
+
+        var orderedNodes = Nodes.ToList();
+        var indexById = orderedNodes
+            .Select((node, index) => new { node.Id, index })
+            .ToDictionary(x => x.Id, x => x.index);
+
+        var matrix = new decimal[orderedNodes.Count, orderedNodes.Count];
+
+        foreach (var edgeVm in Edges)
+        {
+            if (!indexById.TryGetValue(edgeVm.SourceId, out var sourceIndex))
+                continue;
+
+            if (!indexById.TryGetValue(edgeVm.TargetId, out var targetIndex))
+                continue;
+
+            var value = IsWeightedGraph
+                ? (edgeVm.Weight ?? 1m)
+                : 1m;
+
+            matrix[sourceIndex, targetIndex] = value;
+
+            if (!IsDirectedGraph)
+                matrix[targetIndex, sourceIndex] = value;
+        }
+
+        return FormatAdjacencyMatrix(orderedNodes, matrix);
+    }
+
+    private static string FormatAdjacencyMatrix(IReadOnlyList<Node> nodes, decimal[,] matrix)
+    {
+        var rowHeaderWidth = Math.Max(
+            4,
+            nodes.Max(n => string.IsNullOrWhiteSpace(n.Label) ? 1 : n.Label.Length));
+
+        var cellWidth = Math.Max(
+            3,
+            nodes.Max(n => string.IsNullOrWhiteSpace(n.Label) ? 1 : n.Label.Length));
+
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            for (var j = 0; j < nodes.Count; j++)
+            {
+                var text = matrix[i, j].ToString("0.##");
+                if (text.Length > cellWidth)
+                    cellWidth = text.Length;
+            }
+        }
+
+        var lines = new List<string>();
+
+        var headerCells = new List<string>
+    {
+        "".PadRight(rowHeaderWidth)
+    };
+
+        headerCells.AddRange(nodes.Select(n =>
+            (string.IsNullOrWhiteSpace(n.Label) ? "-" : n.Label).PadLeft(cellWidth)));
+
+        lines.Add(string.Join(" ", headerCells));
+
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            var row = new List<string>
+        {
+            (string.IsNullOrWhiteSpace(nodes[i].Label) ? "-" : nodes[i].Label).PadRight(rowHeaderWidth)
+        };
+
+            for (var j = 0; j < nodes.Count; j++)
+            {
+                row.Add(matrix[i, j].ToString("0.##").PadLeft(cellWidth));
+            }
+
+            lines.Add(string.Join(" ", row));
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     private void ApplyCurrentDijkstraStep()

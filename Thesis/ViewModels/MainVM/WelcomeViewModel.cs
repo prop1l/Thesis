@@ -40,11 +40,11 @@ public partial class WelcomeViewModel : ObservableObject
     public string AddNewGraphTitle => "Создать новый граф";
     public string AddNewGraphSubtitle => "Введите имя графа и добавьте его в систему.";
 
-    public WelcomeViewModel(ThemeService? themeService = null)
+    public WelcomeViewModel(ThemeService? themeService = null, string? baseFolder = null)
     {
         _themeService = themeService;
 
-        _appFolder = Path.Combine(
+        _appFolder = baseFolder ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "GraphIS");
 

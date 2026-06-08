@@ -160,7 +160,7 @@ public partial class WelcomeViewModel : ObservableObject
             var graphData = LoadGraphData(trimmedName) ?? CreateEmptyGraphData(trimmedName);
             graphData.Name = trimmedName;
             SaveGraphData(trimmedName, graphData);
-
+            LoadGraphs();
             return true;
         }
         catch (Exception ex)

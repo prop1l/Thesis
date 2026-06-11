@@ -25,6 +25,12 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
   </ItemGroup>
 
+	<PropertyGroup>
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+	</PropertyGroup>
+	
   <ItemGroup>
     <Compile Update="Views\Windows\SettingWindow.axaml.cs">
       <DependentUpon>SettingWindow.axaml</DependentUpon>

@@ -47,7 +47,7 @@
 
 ```bash
 # Клонирование репозитория
-git clone https://github.com/prop1l/GraphIS.git
+git clone https://github.com/prop1l/Thesis
 
 # Переход в папку проекта
 cd GraphIS

@@ -1,10 +1,17 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
+using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using Thesis.Models;
 using Thesis.Models.Algorithms;
 using Thesis.Models.Graph;
@@ -35,7 +42,29 @@ public partial class GraphEditorViewModel : ObservableObject
     [ObservableProperty] private bool isDijkstraMode;
     [ObservableProperty] private string dijkstraStatus = "Алгоритм не запущен";
 
+    [ObservableProperty] private ObservableCollection<PerformancePoint> performancePoints = new();
+    [ObservableProperty] private string performanceSummary = string.Empty;
+    [ObservableProperty] private bool showPerformanceChart;
+    [ObservableProperty]
+    private decimal? benchmarkRuns = 20;
+
+    [ObservableProperty]
+    private ISeries[] performanceSeries = Array.Empty<ISeries>();
+
+    [ObservableProperty]
+    private Axis[] performanceXAxes = Array.Empty<Axis>();
+
+    [ObservableProperty]
+    private Axis[] performanceYAxes = Array.Empty<Axis>();
+
     [ObservableProperty] private string adjacencyMatrixText = string.Empty;
+
+    private List<PerformancePoint> _chartData = new();
+    public List<PerformancePoint> ChartData
+    {
+        get => _chartData;
+        set => SetProperty(ref _chartData, value);
+    }
 
     public ObservableCollection<GraphKindOption> GraphKindOptions { get; } = new()
     {
@@ -110,6 +139,357 @@ public partial class GraphEditorViewModel : ObservableObject
 
         foreach (var edge in linkedEdges)
             edge.Weight = weight;
+    }
+
+    [RelayCommand]
+    private void BuildPerformanceChart()
+    {
+        try
+        {
+            var points = new List<PerformancePoint>();
+
+            var testSizes = new int[] { 5, 10, 20, 30, 50, 75, 100 };
+
+            foreach (var vertexCount in testSizes)
+            {
+                var logV = Math.Log(vertexCount);
+                var vLogV = vertexCount * logV;
+                var vSquared = vertexCount * vertexCount;
+                var vCubed = vertexCount * vertexCount * vertexCount;
+
+                points.Add(new PerformancePoint
+                {
+                    VertexCount = vertexCount,
+                    EdgeCount = vertexCount * (vertexCount - 1) / 2,
+                    TheoreticalTime = vLogV,
+                    Complexity = "O(V log V)"
+                });
+
+                points.Add(new PerformancePoint
+                {
+                    VertexCount = vertexCount,
+                    EdgeCount = vertexCount * (vertexCount - 1) / 2,
+                    TheoreticalTime = vSquared / 10,
+                    Complexity = "O(V²)"
+                });
+
+                points.Add(new PerformancePoint
+                {
+                    VertexCount = vertexCount,
+                    EdgeCount = vertexCount * (vertexCount - 1) / 2,
+                    TheoreticalTime = 1,
+                    Complexity = "O(1)"
+                });
+            }
+
+            ChartData = points;
+
+            PerformanceSummary = BuildComplexitySummary();
+            ShowPerformanceChart = true;
+
+            Debug.WriteLine($"✅ Построен график сложности: {points.Count} точек");
+        }
+        catch (Exception ex)
+        {
+            PerformanceSummary = $"Ошибка: {ex.Message}";
+            ShowPerformanceChart = false;
+            ChartData = new List<PerformancePoint>();
+        }
+    }
+
+    private string BuildComplexitySummary()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("📊 АНАЛИЗ СЛОЖНОСТИ АЛГОРИТМА ДЕЙКСТРЫ");
+        sb.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        sb.AppendLine("");
+        sb.AppendLine("График показывает теоретическую сложность");
+        sb.AppendLine("алгоритма Дейкстры в зависимости от размера графа:");
+        sb.AppendLine("");
+        sb.AppendLine("  🔵 O(1) - константная (идеальный случай)");
+        sb.AppendLine("  🟢 O(V log V) - алгоритм с бинарной кучей");
+        sb.AppendLine("  🔴 O(V²) - алгоритм без оптимизации");
+        sb.AppendLine("");
+        sb.AppendLine("Алгоритм Дейкстры с кучей (O(V log V))");
+        sb.AppendLine("значительно быстрее на больших графах,");
+        sb.AppendLine("чем реализация без кучи (O(V²)).");
+
+        return sb.ToString();
+    }
+
+    [RelayCommand]
+    private void BuildAsymptoticChart()
+    {
+        try
+        {
+            var points = new List<PerformancePoint>();
+
+            // Тестируем разные размеры графов
+            var sizes = Enumerable.Range(1, 100).Select(i => i * 5).ToArray();
+
+            foreach (var v in sizes)
+            {
+                // V вершин
+                var maxEdges = v * (v - 1) / 2;
+
+                // Разные плотности графа
+                var densities = new[] { 0.1, 0.25, 0.5, 0.75, 1.0 };
+
+                foreach (var density in densities)
+                {
+                    var e = (int)(maxEdges * density);
+
+                    // Теоретическое время для разных реализаций
+                    points.Add(new PerformancePoint
+                    {
+                        VertexCount = v,
+                        EdgeCount = e,
+                        TheoreticalTime = CalculateTheoreticalTime(v, e, "Куча"),
+                        Complexity = $"Плотность {density * 100:F0}%"
+                    });
+                }
+            }
+
+            ChartData = points;
+            ShowPerformanceChart = true;
+        }
+        catch (Exception ex)
+        {
+            PerformanceSummary = $"Ошибка: {ex.Message}";
+        }
+    }
+
+    private double CalculateTheoreticalTime(int v, int e, string implementation)
+    {
+        // Расчет теоретического времени в условных единицах
+        switch (implementation)
+        {
+            case "Куча":
+                // O((V+E) log V)
+                return (v + e) * Math.Log(v);
+
+            case "Матрица":
+                // O(V²)
+                return v * v;
+
+            case "Фибоначчи":
+                // O(E + V log V)
+                return e + v * Math.Log(v);
+
+            default:
+                return v * v;
+        }
+    }
+
+    [RelayCommand]
+    private void CompareTheoryAndPractice()
+    {
+        try
+        {
+            if (Nodes.Count < 2)
+            {
+                PerformanceSummary = "Добавьте вершины для сравнения";
+                return;
+            }
+
+            var points = new List<PerformancePoint>();
+            var start = Nodes.First();
+            var end = Nodes.Last();
+
+            // Размеры для тестирования
+            var testSizes = new[] { 5, 10, 15, 20, 25, 30, 40, 50 };
+
+            foreach (var size in testSizes)
+            {
+                // Сохраняем исходный граф
+                var originalNodes = SaveNodes();
+                var originalEdges = SaveEdges();
+
+                try
+                {
+                    // Создаем граф с size вершинами
+                    PrepareGraphWithVertexCount(size);
+
+                    // Измеряем реальное время
+                    var actualTime = MeasureActualTime(start, end, 20);
+
+                    // Теоретическое время для O(V log V)
+                    var theoreticalTime = size * Math.Log(size);
+
+                    points.Add(new PerformancePoint
+                    {
+                        VertexCount = size,
+                        EdgeCount = size * (size - 1) / 2,
+                        ActualTime = actualTime,
+                        TheoreticalTime = theoreticalTime,
+                        Complexity = "Сравнение"
+                    });
+                }
+                finally
+                {
+                    RestoreGraph(originalNodes, originalEdges);
+                }
+            }
+
+            ChartData = points;
+            PerformanceSummary = BuildComparisonSummary(points);
+            ShowPerformanceChart = true;
+        }
+        catch (Exception ex)
+        {
+            PerformanceSummary = $"Ошибка: {ex.Message}";
+        }
+    }
+
+    private List<Node> SaveNodes()
+    {
+        return Nodes.Select(n => new Node
+        {
+            Id = n.Id,
+            Label = n.Label,
+            X = n.X,
+            Y = n.Y,
+            IsVisited = n.IsVisited,
+            IsHighlighted = n.IsHighlighted,
+            DistanceLabel = n.DistanceLabel
+        }).ToList();
+    }
+
+    private List<Edge> SaveEdges()
+    {
+        return Edges.Select(e => new Edge
+        {
+            Id = e.Id,
+            SourceId = e.SourceId,
+            TargetId = e.TargetId,
+            Label = e.Label,
+            Weight = e.Weight
+        }).ToList();
+    }
+
+    private void PrepareGraphWithVertexCount(int vertexCount)
+    {
+        // Очищаем граф
+        Nodes.Clear();
+        Edges.Clear();
+        _logicalEdgeWeights.Clear();
+
+        // Создаем вершины
+        for (int i = 0; i < vertexCount; i++)
+        {
+            Nodes.Add(new Node
+            {
+                Id = Guid.NewGuid().ToString(),
+                Label = $"V{i + 1}",
+                X = 100 + i * 30,
+                Y = 100 + i * 30
+            });
+        }
+
+        // Создаем ребра (полный граф)
+        var nodeList = Nodes.ToList();
+        for (int i = 0; i < nodeList.Count; i++)
+        {
+            for (int j = i + 1; j < nodeList.Count; j++)
+            {
+                var edge = new Edge
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    SourceId = nodeList[i].Id,
+                    TargetId = nodeList[j].Id,
+                    Label = $"E{i + 1}-{j + 1}",
+                    Weight = IsWeightedGraph ? 1m : null
+                };
+
+                Edges.Add(new EdgeViewModel(edge, Nodes, GraphStyle));
+            }
+        }
+    }
+
+    private double MeasureActualTime(Node start, Node end, int runs)
+    {
+        var totalMs = 0.0;
+
+        for (int i = 0; i < runs; i++)
+        {
+            var sw = Stopwatch.StartNew();
+            BuildDijkstraSteps(start, end);
+            sw.Stop();
+            totalMs += sw.Elapsed.TotalMilliseconds;
+        }
+
+        return totalMs / runs;
+    }
+
+    private string BuildComparisonSummary(List<PerformancePoint> points)
+    {
+        if (!points.Any()) return "Нет данных";
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("📊 СРАВНЕНИЕ ТЕОРИИ И ПРАКТИКИ");
+        sb.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━");
+        sb.AppendLine("");
+        sb.AppendLine("График показывает:");
+        sb.AppendLine("  • 🔵 Теоретическую сложность O(V log V)");
+        sb.AppendLine("  • 🔴 Реальное время выполнения");
+        sb.AppendLine("");
+        sb.AppendLine("Совпадение кривых подтверждает,");
+        sb.AppendLine("что алгоритм работает с заявленной сложностью.");
+
+        // Оценка точности
+        var avgDiff = points.Average(p => Math.Abs(p.ActualTime - p.TheoreticalTime) / p.TheoreticalTime);
+        sb.AppendLine("");
+        sb.AppendLine($"📈 Среднее отклонение: {avgDiff * 100:F1}%");
+
+        if (avgDiff < 0.2)
+            sb.AppendLine("✓ Отличное соответствие теории!");
+        else if (avgDiff < 0.5)
+            sb.AppendLine("✓ Хорошее соответствие теории");
+        else
+            sb.AppendLine("⚠️ Рекомендуется оптимизация");
+
+        return sb.ToString();
+    }
+
+  
+    private void RestoreGraph(List<Node> originalNodes, List<Edge> originalEdges)
+    {
+        Nodes.Clear();
+        Edges.Clear();
+        _logicalEdgeWeights.Clear();
+
+        foreach (var node in originalNodes)
+        {
+            Nodes.Add(new Node
+            {
+                Id = node.Id,
+                Label = node.Label,
+                X = node.X,
+                Y = node.Y,
+                IsVisited = node.IsVisited,
+                IsHighlighted = node.IsHighlighted,
+                DistanceLabel = node.DistanceLabel
+            });
+        }
+
+        foreach (var edge in originalEdges)
+        {
+            var restoredEdge = new Edge
+            {
+                Id = edge.Id,
+                SourceId = edge.SourceId,
+                TargetId = edge.TargetId,
+                Label = edge.Label,
+                Weight = edge.Weight
+            };
+
+            Edges.Add(new EdgeViewModel(restoredEdge, Nodes, GraphStyle));
+
+            if (edge.Weight.HasValue)
+                SetLogicalWeight(edge.SourceId, edge.TargetId, edge.Weight.Value);
+        }
+
+        NotifyState();
     }
 
     [RelayCommand]

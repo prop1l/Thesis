@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Thesis.Controls.PerformanceChart">
+	<Grid>
+		<Border Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                CornerRadius="8">
+			<Grid>
+				<Image x:Name="ChartImage"
+                       Stretch="Fill"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Stretch"/>
+				<TextBlock x:Name="NoDataText"
+                           Text="Нажмите 'Построить график сложности'"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                           FontSize="14"
+                           IsVisible="True"/>
+			</Grid>
+		</Border>
+	</Grid>
+</UserControl>

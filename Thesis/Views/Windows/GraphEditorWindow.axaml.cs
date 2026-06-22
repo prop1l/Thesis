@@ -5,6 +5,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
+using LiveChartsCore;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -50,12 +51,30 @@ public partial class GraphEditorWindow : Window
         GraphCanvas.PointerPressed += OnPointerPressed;
         GraphCanvas.PointerMoved += OnPointerMoved;
         GraphCanvas.PointerReleased += OnPointerReleased;
+        this.DataContextChanged += OnDataContextChanged;
     }
 
     #endregion Constructor
 
     #region Lifecycle
 
+    private void OnDataContextChanged(object? sender, EventArgs e)
+    {
+        if (DataContext is GraphEditorViewModel vm)
+        {
+            // Подписываемся на изменения свойства ChartData
+            vm.PropertyChanged += (s, args) =>
+            {
+                if (args.PropertyName == nameof(GraphEditorViewModel.ChartData))
+                {
+                    Chart.SetData(vm.ChartData);
+                }
+            };
+
+            // Инициализация
+            Chart.SetData(vm.ChartData);
+        }
+    }
     private void OnOpened(object? sender, EventArgs e)
     {
         if (Vm is null)

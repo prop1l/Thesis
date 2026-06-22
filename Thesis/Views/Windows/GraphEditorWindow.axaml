@@ -2,7 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
         xmlns:vm="clr-namespace:Thesis.ViewModels"
+        xmlns:controls="clr-namespace:Thesis.Controls"
         xmlns:model="clr-namespace:Thesis.Models"
         mc:Ignorable="d"
         d:DesignWidth="1200"
@@ -14,139 +16,298 @@
         Height="800"
         MinWidth="900"
         MinHeight="600"
-        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/Icon.ico"
+        Background="{DynamicResource SystemRegionColorBrush}"
+        FontFamily="Segoe UI, Arial, sans-serif">
 
 	<Window.Styles>
+		<!-- Панели -->
 		<Style Selector="Border.panel">
 			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
-			<Setter Property="CornerRadius" Value="14"/>
+			<Setter Property="CornerRadius" Value="12"/>
 		</Style>
 
 		<Style Selector="Border.card">
-			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
-			<Setter Property="CornerRadius" Value="12"/>
-			<Setter Property="Padding" Value="14"/>
-			<Setter Property="BoxShadow" Value="0 2 10 0 #25000000"/>
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+			<Setter Property="CornerRadius" Value="10"/>
+			<Setter Property="Padding" Value="16"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+			<Setter Property="BorderThickness" Value="1"/>
 		</Style>
 
+		<!-- Типографика -->
 		<Style Selector="TextBlock.sectionTitle">
 			<Setter Property="FontSize" Value="15"/>
 			<Setter Property="FontWeight" Value="SemiBold"/>
 			<Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+			<Setter Property="Margin" Value="0,0,0,8"/>
 		</Style>
 
 		<Style Selector="TextBlock.caption">
-			<Setter Property="FontSize" Value="12"/>
+			<Setter Property="FontSize" Value="13"/>
 			<Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
 			<Setter Property="VerticalAlignment" Value="Center"/>
+			<Setter Property="Margin" Value="0,2"/>
 		</Style>
 
+		<Style Selector="TextBlock.value">
+			<Setter Property="FontSize" Value="14"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+		</Style>
+
+		<!-- Кнопки тулбара -->
 		<Style Selector="Button.toolbar">
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="CornerRadius" Value="6"/>
 			<Setter Property="Padding" Value="12,8"/>
 			<Setter Property="MinHeight" Value="36"/>
+			<Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+			<Setter Property="FontSize" Value="13"/>
 		</Style>
 
+		<Style Selector="Button.toolbar:pointerover">
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+		</Style>
+
+		<!-- Основные кнопки действий -->
 		<Style Selector="Button.primaryAction">
-			<Setter Property="HorizontalAlignment" Value="Stretch"/>
-			<Setter Property="Padding" Value="12,10"/>
+			<Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="CornerRadius" Value="6"/>
+			<Setter Property="Padding" Value="14,10"/>
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="FontSize" Value="13"/>
 		</Style>
 
+		<Style Selector="Button.primaryAction:pointerover">
+			<Setter Property="Opacity" Value="0.9"/>
+		</Style>
+
+		<Style Selector="Button.primaryAction:disabled">
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeDisabledBrush}"/>
+			<Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundDisabledBrush}"/>
+		</Style>
+
+		<!-- Кнопки шагов -->
 		<Style Selector="Button.stepButton">
-			<Setter Property="MinWidth" Value="80"/>
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="CornerRadius" Value="6"/>
+			<Setter Property="Padding" Value="12,8"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+		</Style>
+
+		<Style Selector="Button.stepButton:pointerover">
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+		</Style>
+
+		<!-- Кнопки иконок -->
+		<Style Selector="Button.iconButton">
+			<Setter Property="Background" Value="Transparent"/>
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Padding" Value="6"/>
+			<Setter Property="CornerRadius" Value="4"/>
+			<Setter Property="FontSize" Value="16"/>
+			<Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+		</Style>
+
+		<Style Selector="Button.iconButton:pointerover">
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"/>
+		</Style>
+
+		<!-- Поля ввода -->
+		<Style Selector="TextBox, NumericUpDown">
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="CornerRadius" Value="6"/>
 			<Setter Property="Padding" Value="10,8"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="MinHeight" Value="36"/>
+			<Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
 		</Style>
 
-		<Style Selector="TextBox, NumericUpDown, ComboBox">
-			<Setter Property="MinHeight" Value="34"/>
+		<Style Selector="TextBox:focus, NumericUpDown:focus">
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
 		</Style>
 
+		<!-- ComboBox -->
+		<Style Selector="ComboBox">
+			<Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+			<Setter Property="BorderBrush" Value="{DynamicResource SystemControlBackgroundChromeMediumBrush}"/>
+			<Setter Property="BorderThickness" Value="1"/>
+			<Setter Property="CornerRadius" Value="6"/>
+			<Setter Property="Padding" Value="10,8"/>
+			<Setter Property="FontSize" Value="13"/>
+			<Setter Property="MinHeight" Value="36"/>
+			<Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+		</Style>
+
+		<!-- Слайдер -->
 		<Style Selector="Slider.propSlider">
 			<Setter Property="VerticalAlignment" Value="Center"/>
-			<Setter Property="MinWidth" Value="140"/>
+			<Setter Property="MinWidth" Value="100"/>
+		</Style>
+
+		<!-- Expander -->
+		<Style Selector="Expander">
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Background" Value="Transparent"/>
+		</Style>
+
+		<Style Selector="Expander > Border">
+			<Setter Property="BorderThickness" Value="0"/>
+			<Setter Property="Background" Value="Transparent"/>
+		</Style>
+
+		<Style Selector="ToggleButton">
+			<Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
+		</Style>
+
+		<!-- ScrollViewer -->
+		<Style Selector="ScrollViewer">
+			<Setter Property="Background" Value="Transparent"/>
+		</Style>
+
+		<Style Selector="ScrollBar">
+			<Setter Property="Background" Value="Transparent"/>
+		</Style>
+
+		<Style Selector="ScrollBar:vertical">
+			<Setter Property="Width" Value="8"/>
+		</Style>
+
+		<Style Selector="ScrollBar:horizontal">
+			<Setter Property="Height" Value="8"/>
 		</Style>
 	</Window.Styles>
 
-	<Grid Margin="10" ColumnDefinitions="*,320" ColumnSpacing="10">
+	<Grid Margin="12" ColumnDefinitions="*,400" ColumnSpacing="12">
 
-		<!-- Левая часть: редактор -->
+		<!-- ============================================ -->
+		<!-- ЛЕВАЯ ЧАСТЬ: ГРАФИЧЕСКИЙ РЕДАКТОР -->
+		<!-- ============================================ -->
 		<Border Grid.Column="0" Classes="panel">
 			<Grid RowDefinitions="Auto,*">
 
+				<!-- Верхняя панель инструментов -->
 				<Border Grid.Row="0"
-                        Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                        CornerRadius="14,14,0,0"
-                        Padding="12">
-					<Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="8">
+                        Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                        CornerRadius="12,12,0,0"
+                        Padding="16,12"
+                        BorderBrush="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                        BorderThickness="0,0,0,1">
+					<Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="10">
 
-						<Button Grid.Column="0"
-                                Classes="toolbar"
-                                Command="{Binding AddNodeCommand}">
-							<StackPanel Orientation="Horizontal" Spacing="6">
-								<TextBlock Text="+"/>
-								<TextBlock Text="Вершина"/>
-							</StackPanel>
-						</Button>
+						<!-- Кнопки действий -->
+						<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+							<Button Classes="toolbar"
+                                    Command="{Binding AddNodeCommand}">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<TextBlock Text="+" FontSize="16" FontWeight="Bold"
+                                               Foreground="{DynamicResource SystemControlHighlightAccentBrush}"/>
+									<TextBlock Text="Добавить вершину"/>
+								</StackPanel>
+							</Button>
 
-						<Button Grid.Column="1"
-                                Classes="toolbar"
-                                Command="{Binding DeleteSelectedCommand}">
-							<TextBlock Text="Удалить"/>
-						</Button>
+							<Button Classes="toolbar"
+                                    Command="{Binding DeleteSelectedCommand}">
+								<StackPanel Orientation="Horizontal" Spacing="6">
+									<TextBlock Text="×" FontSize="16" FontWeight="Bold"
+                                               Foreground="{DynamicResource SystemControlErrorTextBrush}"/>
+									<TextBlock Text="Удалить выбранное"/>
+								</StackPanel>
+							</Button>
 
-						<Button Grid.Column="2"
-                                Classes="toolbar"
-                                Command="{Binding DeleteAllCommand}">
-							<TextBlock Text="Удалить всё"/>
-						</Button>
-
-						<StackPanel Grid.Column="3"
-                                    Orientation="Horizontal"
-                                    Spacing="5">
-							<TextBlock Text="Масштаб" VerticalAlignment="Center"/>
-							<Button Content="+"
-                                    Command="{Binding ZoomInCommand}"
-                                    Padding="5"
-                                    Width="28"
-                                    Height="30"/>
-							<Button Content="-"
-                                    Command="{Binding ZoomOutCommand}"
-                                    Padding="5"
-                                    Width="28"
-                                    Height="30"/>
-							<Button Content="⟲"
-                                    Command="{Binding ResetZoomCommand}"
-                                    Padding="5"
-                                    Width="32"
-                                    Height="30"/>
+							<Button Classes="toolbar"
+                                    Command="{Binding DeleteAllCommand}">
+								<TextBlock Text="Очистить всё"/>
+							</Button>
 						</StackPanel>
 
-						<TextBlock Grid.Column="4"
-                                   Classes="caption"
-                                   Text="{Binding GraphName, StringFormat=Граф: {0}}"
-                                   Margin="8,0,0,0"/>
+						<!-- Разделитель -->
+						<Border Grid.Column="1"
+                                Width="1"
+                                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                Margin="8,4"/>
+
+						<!-- Управление масштабом -->
+						<Border Grid.Column="2"
+                                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                CornerRadius="6"
+                                BorderBrush="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                BorderThickness="1"
+                                Padding="4">
+							<StackPanel Orientation="Horizontal" Spacing="4">
+								<Button Classes="iconButton"
+                                        Command="{Binding ZoomOutCommand}"
+                                        ToolTip.Tip="Уменьшить масштаб">
+									<TextBlock Text="−" FontSize="16" FontWeight="Bold"/>
+								</Button>
+
+								<Border Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+                                        CornerRadius="4"
+                                        Padding="8,4"
+                                        MinWidth="45">
+									<TextBlock Text="{Binding ZoomLevel, StringFormat={}{0:P0}}"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+								</Border>
+
+								<Button Classes="iconButton"
+                                        Command="{Binding ZoomInCommand}"
+                                        ToolTip.Tip="Увеличить масштаб">
+									<TextBlock Text="+" FontSize="16" FontWeight="Bold"/>
+								</Button>
+
+								<Button Classes="iconButton"
+                                        Command="{Binding ResetZoomCommand}"
+                                        ToolTip.Tip="Сбросить масштаб">
+									<TextBlock Text="⟲" FontSize="14"/>
+								</Button>
+							</StackPanel>
+						</Border>
+
+						<!-- Название графа -->
+						<Border Grid.Column="4"
+                                Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                CornerRadius="6"
+                                BorderBrush="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                                BorderThickness="1"
+                                Padding="12,8">
+							<TextBlock Text="{Binding GraphName, StringFormat='Граф: {0}'}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                       VerticalAlignment="Center"/>
+						</Border>
 					</Grid>
 				</Border>
 
+				<!-- Область рисования -->
 				<Border Grid.Row="1"
                         Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                        CornerRadius="0,0,14,14"
-                        Padding="8">
+                        CornerRadius="0,0,12,12">
 					<ScrollViewer x:Name="GraphScrollViewer"
                                   HorizontalScrollBarVisibility="Auto"
                                   VerticalScrollBarVisibility="Auto">
-						<ScrollViewer.Styles>
-							<Style Selector="ScrollViewer">
-								<Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
-								<Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-							</Style>
-						</ScrollViewer.Styles>
-
-						<Border x:Name="CanvasContainer">
+						<Border x:Name="CanvasContainer"
+                                Margin="16">
 							<Canvas x:Name="GraphCanvas"
                                     Width="2000"
                                     Height="2000"
-                                    Background="#FAFAFA"
+                                    Background="Transparent"
                                     ClipToBounds="True">
 								<Canvas.RenderTransform>
 									<ScaleTransform ScaleX="{Binding ZoomLevel}"
@@ -159,408 +320,491 @@
 			</Grid>
 		</Border>
 
-		<!-- Правая часть: свойства -->
+		<!-- ============================================ -->
+		<!-- ПРАВАЯ ЧАСТЬ: ПАНЕЛЬ СВОЙСТВ -->
+		<!-- ============================================ -->
 		<Border Grid.Column="1" Classes="panel">
 			<Grid RowDefinitions="Auto,*">
 
+				<!-- Заголовок панели -->
 				<Border Grid.Row="0"
-                        Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
-                        CornerRadius="14,14,0,0"
-                        Padding="16,14">
-					<TextBlock Text="Свойства"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               HorizontalAlignment="Center"/>
+						Background="{DynamicResource SystemControlHighlightAccentBrush}"
+						CornerRadius="12,12,0,0"
+						Padding="16,14">
+					<TextBlock Text="Свойства графа"
+							   FontSize="16"
+							   FontWeight="SemiBold"
+							   Foreground="White"
+							   HorizontalAlignment="Center"/>
 				</Border>
 
-				<ScrollViewer Grid.Row="1">
-					<StackPanel Margin="12" Spacing="12">
+				<ScrollViewer Grid.Row="1"
+							  HorizontalScrollBarVisibility="Disabled"
+							  VerticalScrollBarVisibility="Auto"
+							  Padding="9 9 9 -20">
+					<StackPanel Spacing="14">
 
-						<!-- Информация о графе -->
+						<!-- ======= ИНФОРМАЦИЯ О ГРАФЕ ======= -->
 						<Border Classes="card">
-							<StackPanel Spacing="10">
-								<TextBlock Classes="sectionTitle" Text="Информация о графе"/>
-
-								<Grid ColumnDefinitions="Auto,*,Auto,*"
-                                      RowDefinitions="Auto,Auto,Auto"
-                                      ColumnSpacing="10"
-                                      RowSpacing="10">
-
-									<TextBlock Grid.Row="0" Grid.Column="0" Classes="caption" Text="Имя"/>
-									<TextBox Grid.Row="0"
-                                             Grid.Column="1"
-                                             Grid.ColumnSpan="3"
-                                             Text="{Binding GraphName, UpdateSourceTrigger=PropertyChanged}"/>
-
-									<TextBlock Grid.Row="1" Grid.Column="0" Classes="caption" Text="Вершины"/>
-									<TextBlock Grid.Row="1"
-                                               Grid.Column="1"
-                                               Text="{Binding NodesCount}"
-                                               FontWeight="SemiBold"/>
-
-									<TextBlock Grid.Row="1" Grid.Column="2" Classes="caption" Text="Рёбра"/>
-									<TextBlock Grid.Row="1"
-                                               Grid.Column="3"
-                                               Text="{Binding EdgesCount}"
-                                               FontWeight="SemiBold"/>
-
-								</Grid>
-							</StackPanel>
-						</Border>
-
-						<Border Classes="card">
-							<Expander IsExpanded="False">
-								<Expander.Header>
-									<Grid ColumnDefinitions="*,Auto"
-										  ColumnSpacing="10">
-										<StackPanel Spacing="2">
-											<TextBlock Text="Матрица смежности"
-													   Classes="sectionTitle"/>
-											<TextBlock Text="Представление графа в матричном виде"
-													   Classes="caption"/>
-										</StackPanel>
-									</Grid>
-								</Expander.Header>
-
-								<StackPanel Margin="0,12,0,0"
-											Spacing="8">
-									<Border Background="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"
-											CornerRadius="10"
-											Padding="10">
-										<ScrollViewer HorizontalScrollBarVisibility="Auto"
-													  VerticalScrollBarVisibility="Auto"
-													  MaxHeight="240">
-											<TextBox Text="{Binding AdjacencyMatrixText}"
-													 IsReadOnly="True"
-													 AcceptsReturn="True"
-													 TextWrapping="NoWrap"
-													 BorderThickness="0"
-													 Background="Transparent"
-													 FontFamily="Consolas"
-													 FontSize="13"
-													 CaretBrush="Transparent"
-													 MinWidth="240"/>
-										</ScrollViewer>
-									</Border>
-
-									<TextBlock Classes="caption"
-											   Text="Для невзвешенного графа используются 0 и 1, для взвешенного — веса рёбер."
-											   TextWrapping="Wrap"/>
-								
-																			<Button Grid.Column="1"
-												Classes="toolbar"
-												Command="{Binding BuildAdjacencyMatrixCommand}"
-												VerticalAlignment="Center">
-											<TextBlock Text="Обновить"/>
-										</Button>
-								</StackPanel>
-							</Expander>
-						</Border>
-
-						<!-- Алгоритм Дейкстры -->
-						<Border Classes="card">
-							<StackPanel Spacing="10">
-								<TextBlock Classes="sectionTitle" Text="Алгоритм Дейкстры"/>
+							<StackPanel Spacing="12">
+								<TextBlock Classes="sectionTitle" Text="📊 Информация о графе"/>
 
 								<Grid ColumnDefinitions="Auto,*"
-                                      RowDefinitions="Auto,Auto,Auto,Auto"
-                                      ColumnSpacing="10"
-                                      RowSpacing="10">
+									  RowDefinitions="Auto,Auto,Auto"
+									  ColumnSpacing="12"
+									  RowSpacing="10">
 
-									<TextBlock Grid.Row="0" Grid.Column="0" Classes="caption" Text="Старт"/>
-									<ComboBox Grid.Row="0"
-                                              Grid.Column="1"
-                                              ItemsSource="{Binding Nodes}"
-                                              SelectedItem="{Binding DijkstraStartNode}">
-										<ComboBox.ItemTemplate>
-											<DataTemplate x:DataType="model:Node">
-												<TextBlock Text="{Binding Label}"/>
-											</DataTemplate>
-										</ComboBox.ItemTemplate>
-									</ComboBox>
+									<TextBlock Grid.Row="0" Grid.Column="0"
+											   Classes="caption" Text="Название"/>
+									<TextBox Grid.Row="0" Grid.Column="1"
+											 Text="{Binding GraphName, UpdateSourceTrigger=PropertyChanged}"
+											 FontWeight="SemiBold"
+											 Watermark="Название графа"/>
 
-									<TextBlock Grid.Row="1" Grid.Column="0" Classes="caption" Text="Финиш"/>
-									<ComboBox Grid.Row="1"
-                                              Grid.Column="1"
-                                              ItemsSource="{Binding Nodes}"
-                                              SelectedItem="{Binding DijkstraEndNode}">
-										<ComboBox.ItemTemplate>
-											<DataTemplate x:DataType="model:Node">
-												<TextBlock Text="{Binding Label}"/>
-											</DataTemplate>
-										</ComboBox.ItemTemplate>
-									</ComboBox>
-
-									<TextBlock Grid.Row="2"
-                                               Grid.Column="0"
-                                               Classes="caption"
-                                               Text="Статус"
-                                               VerticalAlignment="Top"/>
-
-									<Border Grid.Row="2"
-                                            Grid.Column="1"
-                                            Background="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"
-                                            CornerRadius="8"
-                                            Padding="10">
-										<TextBlock Text="{Binding DijkstraStatus}"
-                                                   TextWrapping="Wrap"/>
+									<TextBlock Grid.Row="1" Grid.Column="0"
+											   Classes="caption" Text="Вершин"/>
+									<Border Grid.Row="1" Grid.Column="1"
+											Background="{DynamicResource SystemControlHighlightAccentBrush}"
+											CornerRadius="6"
+											Padding="10,6"
+											Opacity="0.15">
+										<TextBlock Text="{Binding NodesCount}"
+												   Classes="value"
+												   Foreground="{DynamicResource SystemControlHighlightAccentBrush}"/>
 									</Border>
 
-									<TextBlock Grid.Row="3"
-                                               Grid.Column="0"
-                                               Classes="caption"
-                                               Text="Шаг"/>
-									<TextBlock Grid.Row="3"
-                                               Grid.Column="1"
-                                               Text="{Binding CurrentDijkstraStepIndex, StringFormat=Текущий шаг: {0}}"
-                                               FontWeight="SemiBold"/>
+									<TextBlock Grid.Row="2" Grid.Column="0"
+											   Classes="caption" Text="Рёбер"/>
+									<Border Grid.Row="2" Grid.Column="1"
+											Background="{DynamicResource SystemControlWarningBrush}"
+											CornerRadius="6"
+											Padding="10,6"
+											Opacity="0.15">
+										<TextBlock Text="{Binding EdgesCount}"
+												   Classes="value"
+												   Foreground="{DynamicResource SystemControlWarningBrush}"/>
+									</Border>
 								</Grid>
-
-								<Grid ColumnDefinitions="*,*"
-                                      RowDefinitions="Auto,Auto"
-                                      ColumnSpacing="8"
-                                      RowSpacing="8">
-
-									<Button Grid.Row="0"
-                                            Grid.Column="0"
-                                            Classes="primaryAction"
-                                            Command="{Binding RunDijkstraCommand}"
-                                            IsEnabled="{Binding CanRunDijkstra}">
-										<TextBlock Text="Запустить"/>
-									</Button>
-
-									<Button Grid.Row="0"
-                                            Grid.Column="1"
-                                            Classes="primaryAction"
-                                            Command="{Binding ClearDijkstraCommand}">
-										<TextBlock Text="Сброс"/>
-									</Button>
-
-									<Button Grid.Row="1"
-                                            Grid.Column="0"
-                                            Classes="stepButton"
-                                            Command="{Binding PreviousDijkstraStepCommand}"
-                                            IsEnabled="{Binding CanGoToPreviousStep}">
-										<TextBlock Text="Назад"/>
-									</Button>
-
-									<Button Grid.Row="1"
-                                            Grid.Column="1"
-                                            Classes="stepButton"
-                                            Command="{Binding NextDijkstraStepCommand}"
-                                            IsEnabled="{Binding CanGoToNextStep}">
-										<TextBlock Text="Вперёд"/>
-									</Button>
-								</Grid>
-
-								<TextBlock Classes="caption"
-                                           Text="Выберите начальную и конечную вершины, затем запустите алгоритм. Для невзвешенного графа каждое ребро считается с весом 1."
-                                           TextWrapping="Wrap"/>
 							</StackPanel>
 						</Border>
-
-						<!-- Стиль графа -->
+					
+						
+						<!-- ======= ТИП ГРАФА ======= -->
 						<Border Classes="card">
-							<Expander Header="Стиль графа"
-                                      IsExpanded="False"
-                                      Width="270">
-								<StackPanel Spacing="10">
-									<TextBlock Classes="caption" Text="Вершины"/>
-
-									<Grid ColumnDefinitions="Auto,*"
-                                          RowDefinitions="Auto,Auto,Auto"
-                                          ColumnSpacing="10"
-                                          RowSpacing="10">
-
-										<TextBlock Grid.Row="0" Grid.Column="0" Classes="caption" Text="Ширина"/>
-										<NumericUpDown Grid.Row="0"
-                                                       Grid.Column="1"
-                                                       Value="{Binding GraphStyle.Node.Width}"
-                                                       Minimum="20"
-                                                       Maximum="100"
-                                                       Increment="1"
-                                                       FormatString="0"/>
-
-										<TextBlock Grid.Row="1" Grid.Column="0" Classes="caption" Text="Высота"/>
-										<NumericUpDown Grid.Row="1"
-                                                       Grid.Column="1"
-                                                       Value="{Binding GraphStyle.Node.Height}"
-                                                       Minimum="20"
-                                                       Maximum="100"
-                                                       Increment="1"
-                                                       FormatString="0"/>
-
-										<TextBlock Grid.Row="2" Grid.Column="0" Classes="caption" Text="Размер шрифта"/>
-										<NumericUpDown Grid.Row="2"
-                                                       Grid.Column="1"
-                                                       Value="{Binding GraphStyle.Node.FontSize}"
-                                                       Minimum="8"
-                                                       Maximum="30"
-                                                       Increment="1"
-                                                       FormatString="0"/>
-									</Grid>
-
-									<TextBlock Classes="caption" Text="Рёбра"/>
-
-									<Grid ColumnDefinitions="Auto,*"
-                                          RowDefinitions="Auto,Auto,Auto"
-                                          ColumnSpacing="10"
-                                          RowSpacing="10">
-
-										<TextBlock Grid.Row="0" Grid.Column="0" Classes="caption" Text="Толщина"/>
-										<NumericUpDown Grid.Row="0"
-                                                       Grid.Column="1"
-                                                       Value="{Binding GraphStyle.Edge.StrokeThickness}"
-                                                       Minimum="1"
-                                                       Maximum="10"
-                                                       Increment="1"
-                                                       FormatString="0"/>
-
-										<TextBlock Grid.Row="1" Grid.Column="0" Classes="caption" Text="Шрифт веса"/>
-										<NumericUpDown Grid.Row="1"
-                                                       Grid.Column="1"
-                                                       Value="{Binding GraphStyle.Edge.FontSize}"
-                                                       Minimum="8"
-                                                       Maximum="30"
-                                                       Increment="1"
-                                                       FormatString="0"/>
-
-										<TextBlock Grid.Row="2" Grid.Column="0" Classes="caption" Text="Пунктир"/>
-										<CheckBox Grid.Row="2"
-                                                  Grid.Column="1"
-                                                  IsChecked="{Binding GraphStyle.Edge.IsDashed}"/>
-									</Grid>
-								</StackPanel>
-							</Expander>
-						</Border>
-
-						<!-- Тип графа -->
-						<Border Classes="card">
-							<StackPanel Spacing="10">
-								<TextBlock Classes="sectionTitle" Text="Тип графа"/>
+							<StackPanel Spacing="12">
+								<TextBlock Classes="sectionTitle" Text="⚙️ Тип графа"/>
 
 								<ComboBox ItemsSource="{Binding GraphKindOptions}"
-                                          SelectedItem="{Binding SelectedGraphKindOption}">
+										  SelectedItem="{Binding SelectedGraphKindOption}"
+										  PlaceholderText="Выберите тип">
 									<ComboBox.ItemTemplate>
 										<DataTemplate x:DataType="vm:GraphKindOption">
 											<TextBlock Text="{Binding Title}"/>
 										</DataTemplate>
 									</ComboBox.ItemTemplate>
 								</ComboBox>
-
-								<TextBlock Classes="caption"
-                                           Text="{Binding GraphName, StringFormat=Режим для графа {0}}"/>
+							</StackPanel>
+						</Border>
+						
+						<!-- ======= ПОДСКАЗКА ======= -->
+						<Border Classes="card"
+								IsVisible="{Binding IsNothingSelected}">
+							<StackPanel Spacing="10">
+								<TextBlock Text="💡 Ничего не выбрано"
+										   FontSize="15"
+										   FontWeight="SemiBold"
+										   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+										   HorizontalAlignment="Center"/>
+								<TextBlock Text="ЛКМ — перемещение вершин. ПКМ по вершине — создание ребра."
+										   TextWrapping="Wrap"
+										   FontSize="12"
+										   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+										   TextAlignment="Center"
+										   LineHeight="18"/>
 							</StackPanel>
 						</Border>
 
-						<!-- Свойства вершины -->
+						<!-- ======= СВОЙСТВА ВЕРШИНЫ ======= -->
 						<Border Classes="card"
-                                IsVisible="{Binding IsNodeSelected}">
-							<StackPanel Spacing="10">
+								IsVisible="{Binding IsNodeSelected}">
+							<StackPanel Spacing="12">
 								<TextBlock Classes="sectionTitle"
-                                           Text="{Binding SelectedNode.Label, StringFormat=Вершина: {0}}"/>
+										   Text="{Binding SelectedNode.Label, StringFormat='🔹 Вершина: {0}'}"
+										   TextWrapping="Wrap"/>
 
 								<Grid ColumnDefinitions="Auto,*"
-                                      RowDefinitions="Auto,Auto,Auto,Auto"
-                                      ColumnSpacing="10"
-                                      RowSpacing="10">
+									  RowDefinitions="Auto,Auto,Auto,Auto"
+									  ColumnSpacing="12"
+									  RowSpacing="10">
 
 									<TextBlock Grid.Row="0" Grid.Column="0" Classes="caption" Text="ID"/>
-									<TextBlock Grid.Row="0"
-                                               Grid.Column="1"
-                                               Text="{Binding SelectedNode.Id}"
-                                               TextWrapping="Wrap"
-                                               FontSize="9"/>
+									<Border Grid.Row="0" Grid.Column="1"
+											Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+											CornerRadius="4"
+											Padding="8,4">
+										<TextBlock Text="{Binding SelectedNode.Id}"
+												   FontFamily="Consolas"
+												   FontSize="11"
+												   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+												   TextWrapping="Wrap"/>
+									</Border>
 
 									<TextBlock Grid.Row="1" Grid.Column="0" Classes="caption" Text="Название"/>
-									<TextBox Grid.Row="1"
-                                             Grid.Column="1"
-                                             Text="{Binding SelectedNode.Label, UpdateSourceTrigger=PropertyChanged}"/>
+									<TextBox Grid.Row="1" Grid.Column="1"
+											 Text="{Binding SelectedNode.Label, UpdateSourceTrigger=PropertyChanged}"
+											 Watermark="Название"/>
 
 									<TextBlock Grid.Row="2" Grid.Column="0" Classes="caption" Text="X"/>
-									<Slider Grid.Row="2"
-                                            Grid.Column="1"
-                                            Classes="propSlider"
-                                            Minimum="0"
-                                            Maximum="1960"
-                                            Value="{Binding SelectedNode.X}"/>
+									<Grid Grid.Row="2" Grid.Column="1"
+										  ColumnDefinitions="*,Auto"
+										  ColumnSpacing="8">
+										<Slider Grid.Column="0"
+												Classes="propSlider"
+												Minimum="0"
+												Maximum="1960"
+												Value="{Binding SelectedNode.X}"/>
+										<TextBlock Grid.Column="1"
+												   Text="{Binding SelectedNode.X, StringFormat={}{0:F0}}"
+												   Classes="caption"
+												   MinWidth="30"
+												   TextAlignment="Right"/>
+									</Grid>
 
 									<TextBlock Grid.Row="3" Grid.Column="0" Classes="caption" Text="Y"/>
-									<Slider Grid.Row="3"
-                                            Grid.Column="1"
-                                            Classes="propSlider"
-                                            Minimum="0"
-                                            Maximum="1960"
-                                            Value="{Binding SelectedNode.Y}"/>
+									<Grid Grid.Row="3" Grid.Column="1"
+										  ColumnDefinitions="*,Auto"
+										  ColumnSpacing="8">
+										<Slider Grid.Column="0"
+												Classes="propSlider"
+												Minimum="0"
+												Maximum="1960"
+												Value="{Binding SelectedNode.Y}"/>
+										<TextBlock Grid.Column="1"
+												   Text="{Binding SelectedNode.Y, StringFormat={}{0:F0}}"
+												   Classes="caption"
+												   MinWidth="30"
+												   TextAlignment="Right"/>
+									</Grid>
 								</Grid>
 							</StackPanel>
 						</Border>
 
-						<!-- Свойства ребра -->
+						<!-- ======= СВОЙСТВА РЕБРА ======= -->
 						<Border Classes="card"
-                                IsVisible="{Binding IsEdgeSelected}">
-							<StackPanel Spacing="10">
+								IsVisible="{Binding IsEdgeSelected}">
+							<StackPanel Spacing="12">
 								<TextBlock Classes="sectionTitle"
-                                           Text="{Binding SelectedEdge.Label, StringFormat=Ребро: {0}}"/>
+										   Text="{Binding SelectedEdge.Label, StringFormat='🔸 Ребро: {0}'}"
+										   TextWrapping="Wrap"/>
 
 								<Grid ColumnDefinitions="Auto,*"
-                                      RowDefinitions="Auto,Auto,Auto"
-                                      ColumnSpacing="10"
-                                      RowSpacing="10">
+									  RowDefinitions="Auto,Auto,Auto"
+									  ColumnSpacing="12"
+									  RowSpacing="10">
 
 									<TextBlock Grid.Row="0" Grid.Column="0" Classes="caption" Text="ID"/>
-									<TextBlock Grid.Row="0"
-                                               Grid.Column="1"
-                                               Text="{Binding SelectedEdge.Id}"
-                                               TextWrapping="Wrap"
-                                               FontSize="9"/>
+									<Border Grid.Row="0" Grid.Column="1"
+											Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+											CornerRadius="4"
+											Padding="8,4">
+										<TextBlock Text="{Binding SelectedEdge.Id}"
+												   FontFamily="Consolas"
+												   FontSize="11"
+												   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+												   TextWrapping="Wrap"/>
+									</Border>
 
 									<TextBlock Grid.Row="1" Grid.Column="0" Classes="caption" Text="Название"/>
-									<TextBox Grid.Row="1"
-                                             Grid.Column="1"
-                                             Text="{Binding SelectedEdge.Label, UpdateSourceTrigger=PropertyChanged}"/>
+									<TextBox Grid.Row="1" Grid.Column="1"
+											 Text="{Binding SelectedEdge.Label, UpdateSourceTrigger=PropertyChanged}"
+											 Watermark="Название"/>
 
 									<TextBlock Grid.Row="2" Grid.Column="0" Classes="caption" Text="Вес"/>
-									<NumericUpDown Grid.Row="2"
-                                                   Grid.Column="1"
-                                                   Value="{Binding SelectedEdge.Weight}"
-                                                   Minimum="0"
-                                                   Maximum="1000"
-                                                   Increment="1"
-                                                   FormatString="0"
-                                                   IsVisible="{Binding IsWeightedGraph}"/>
+									<NumericUpDown Grid.Row="2" Grid.Column="1"
+												   Value="{Binding SelectedEdge.Weight}"
+												   Minimum="0"
+												   Maximum="1000"
+												   Increment="1"
+												   FormatString="0"
+												   IsVisible="{Binding IsWeightedGraph}"/>
 								</Grid>
 							</StackPanel>
 						</Border>
 
-						<!-- Подсказка -->
-						<Border Classes="card"
-                                IsVisible="{Binding IsNothingSelected}">
-							<StackPanel Spacing="8">
-								<TextBlock Text="Ничего не выбрано"
-                                           FontSize="14"
-                                           FontWeight="SemiBold"
-                                           HorizontalAlignment="Center"/>
-								<TextBlock Text="ЛКМ — перетаскивание вершины. ПКМ по вершине — начало и завершение создания ребра. В блоке Дейкстры можно выбрать старт и финиш и пошагово просмотреть алгоритм."
-                                           TextWrapping="Wrap"
-                                           TextAlignment="Center"
-                                           Classes="caption"/>
+						<!-- ======= МАТРИЦА СМЕЖНОСТИ ======= -->
+						<Border Classes="card">
+							<Expander IsExpanded="False">
+								<Expander.Header>
+									<StackPanel Spacing="2">
+										<TextBlock Classes="sectionTitle"
+												   Text="📋 Матрица смежности"
+												   Margin="0"/>
+										<TextBlock Text="Представление в матричном виде"
+												   Classes="caption"
+												   FontSize="11"/>
+									</StackPanel>
+								</Expander.Header>
+
+								<StackPanel Margin="0,12,0,0" Spacing="10">
+									<Border Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+											CornerRadius="8"
+											Padding="12">
+										<ScrollViewer HorizontalScrollBarVisibility="Auto"
+													  VerticalScrollBarVisibility="Auto"
+													  MaxHeight="200">
+											<TextBox Text="{Binding AdjacencyMatrixText}"
+													 IsReadOnly="True"
+													 AcceptsReturn="True"
+													 TextWrapping="NoWrap"
+													 BorderThickness="0"
+													 Background="Transparent"
+													 Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+													 FontFamily="Consolas, Courier New, monospace"
+													 FontSize="12"
+													 CaretBrush="Transparent"
+													 MinWidth="200"/>
+										</ScrollViewer>
+									</Border>
+
+									<Button Classes="primaryAction"
+											Command="{Binding BuildAdjacencyMatrixCommand}"
+											HorizontalAlignment="Stretch">
+										<TextBlock Text="Обновить матрицу" HorizontalAlignment="Center"/>
+									</Button>
+								</StackPanel>
+							</Expander>
+						</Border>
+
+						<!-- ======= АЛГОРИТМ ДЕЙКСТРЫ ======= -->
+						<Border Classes="card">
+							<StackPanel Spacing="12">
+								<TextBlock Classes="sectionTitle" Text="🔍 Алгоритм Дейкстры"/>
+
+								<Grid ColumnDefinitions="Auto,*"
+									  RowDefinitions="Auto,Auto,Auto"
+									  ColumnSpacing="12"
+									  RowSpacing="10">
+
+									<TextBlock Grid.Row="0" Grid.Column="0"
+											   Classes="caption" Text="Старт"/>
+									<ComboBox Grid.Row="0" Grid.Column="1"
+											  ItemsSource="{Binding Nodes}"
+											  SelectedItem="{Binding DijkstraStartNode}"
+											  PlaceholderText="Выберите">
+										<ComboBox.ItemTemplate>
+											<DataTemplate x:DataType="model:Node">
+												<TextBlock Text="{Binding Label}"/>
+											</DataTemplate>
+										</ComboBox.ItemTemplate>
+									</ComboBox>
+
+									<TextBlock Grid.Row="1" Grid.Column="0"
+											   Classes="caption" Text="Финиш"/>
+									<ComboBox Grid.Row="1" Grid.Column="1"
+											  ItemsSource="{Binding Nodes}"
+											  SelectedItem="{Binding DijkstraEndNode}"
+											  PlaceholderText="Выберите">
+										<ComboBox.ItemTemplate>
+											<DataTemplate x:DataType="model:Node">
+												<TextBlock Text="{Binding Label}"/>
+											</DataTemplate>
+										</ComboBox.ItemTemplate>
+									</ComboBox>
+
+									<TextBlock Grid.Row="2" Grid.Column="0"
+											   Classes="caption" Text="Статус"/>
+									<Border Grid.Row="2" Grid.Column="1"
+											Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+											CornerRadius="6"
+											Padding="10,8">
+										<TextBlock Text="{Binding DijkstraStatus}"
+												   TextWrapping="Wrap"
+												   FontSize="12"
+												   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+									</Border>
+								</Grid>
+
+								<Grid ColumnDefinitions="*,*"
+									  RowDefinitions="Auto,Auto,Auto"
+									  ColumnSpacing="8"
+									  RowSpacing="8">
+
+									<Button Grid.Row="0" Grid.Column="0"
+											Classes="primaryAction"
+											Command="{Binding RunDijkstraCommand}"
+											IsEnabled="{Binding CanRunDijkstra}">
+										<TextBlock Text="Запустить" HorizontalAlignment="Center"/>
+									</Button>
+
+									<Button Grid.Row="0" Grid.Column="1"
+											Classes="primaryAction"
+											Command="{Binding ClearDijkstraCommand}">
+										<TextBlock Text="Сброс" HorizontalAlignment="Center"/>
+									</Button>
+
+									<Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+											Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}"
+											CornerRadius="6"
+											Padding="10,8">
+										<TextBlock Text="{Binding CurrentDijkstraStepIndex, StringFormat='Шаг {0}'}"
+												   FontWeight="SemiBold"
+												   Foreground="{DynamicResource SystemControlHighlightAccentBrush}"
+												   HorizontalAlignment="Center"/>
+									</Border>
+
+									<Button Grid.Row="2" Grid.Column="0"
+											Classes="stepButton"
+											Command="{Binding PreviousDijkstraStepCommand}"
+											IsEnabled="{Binding CanGoToPreviousStep}">
+										<TextBlock Text="← Назад" HorizontalAlignment="Center"/>
+									</Button>
+
+									<Button Grid.Row="2" Grid.Column="1"
+											Classes="stepButton"
+											Command="{Binding NextDijkstraStepCommand}"
+											IsEnabled="{Binding CanGoToNextStep}">
+										<TextBlock Text="Вперёд →" HorizontalAlignment="Center"/>
+									</Button>
+								</Grid>
+
+								<TextBlock Text="Выберите начальную и конечную вершины, затем запустите алгоритм."
+										   TextWrapping="Wrap"
+										   FontSize="11"
+										   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+										   FontStyle="Italic"/>
+							</StackPanel>
+						</Border>
+						
+						
+
+						<!-- ======= АНАЛИЗ ПРОИЗВОДИТЕЛЬНОСТИ ======= -->
+						<Border Classes="card">
+							<StackPanel Spacing="12">
+								<TextBlock Classes="sectionTitle" Text="📈 Производительность"/>
+
+								<Grid ColumnDefinitions="Auto,*"
+									  RowDefinitions="Auto,Auto,Auto"
+									  ColumnSpacing="12"
+									  RowSpacing="10">
+
+									<TextBlock Grid.Row="1" Grid.Column="0"
+											   Classes="caption" Text="Сводка"/>
+									<Border Grid.Row="1" Grid.Column="1"
+											Background="{DynamicResource SystemControlWarningBrush}"
+											CornerRadius="6"
+											Padding="10,8">
+										<TextBlock Text="{Binding PerformanceSummary}"
+												   TextWrapping="Wrap"
+												   FontSize="12"
+												   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+									</Border>
+
+									<Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+											Classes="primaryAction"
+											Command="{Binding BuildPerformanceChartCommand}">
+										<TextBlock Text="Построить график" HorizontalAlignment="Center"/>
+									</Button>
+								</Grid>
+
+								<controls:PerformanceChart x:Name="Chart"
+														   Height="240"/>
+
+								<TextBlock Text="Сложность O((V+E)·log V)"
+										   TextWrapping="Wrap"
+										   FontSize="11"
+										   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+										   FontStyle="Italic"/>
 							</StackPanel>
 						</Border>
 
-						<!-- Сохранение -->
+						
+
+						<!-- ======= СТИЛЬ ГРАФА ======= -->
 						<Border Classes="card">
-							<StackPanel Spacing="10">
-								<TextBlock Classes="sectionTitle" Text="Действия"/>
-								<Button Classes="primaryAction"
-                                        Command="{Binding SaveCommand}">
-									<StackPanel Orientation="Horizontal"
-                                                Spacing="6"
-                                                HorizontalAlignment="Center">
-										<TextBlock Text="Сохранить граф"/>
-									</StackPanel>
-								</Button>
-							</StackPanel>
+							<Expander IsExpanded="False">
+								<Expander.Header>
+									<TextBlock Classes="sectionTitle"
+											   Text="🎨 Стиль графа"
+											   Margin="0"/>
+								</Expander.Header>
+
+								<StackPanel Margin="0,12,0,0" Spacing="12">
+									<TextBlock Text="Вершины"
+											   FontWeight="SemiBold"
+											   FontSize="14"
+											   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+
+									<Grid ColumnDefinitions="Auto,*"
+										  RowDefinitions="Auto,Auto,Auto"
+										  ColumnSpacing="12"
+										  RowSpacing="8">
+										<TextBlock Grid.Row="0" Grid.Column="0"
+												   Classes="caption" Text="Ширина"/>
+										<NumericUpDown Grid.Row="0" Grid.Column="1"
+													   Value="{Binding GraphStyle.Node.Width}"
+													   Minimum="20" Maximum="100"
+													   Increment="1" FormatString="0"/>
+
+										<TextBlock Grid.Row="1" Grid.Column="0"
+												   Classes="caption" Text="Высота"/>
+										<NumericUpDown Grid.Row="1" Grid.Column="1"
+													   Value="{Binding GraphStyle.Node.Height}"
+													   Minimum="20" Maximum="100"
+													   Increment="1" FormatString="0"/>
+
+										<TextBlock Grid.Row="2" Grid.Column="0"
+												   Classes="caption" Text="Шрифт"/>
+										<NumericUpDown Grid.Row="2" Grid.Column="1"
+													   Value="{Binding GraphStyle.Node.FontSize}"
+													   Minimum="8" Maximum="30"
+													   Increment="1" FormatString="0"/>
+									</Grid>
+
+									<Separator Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+											   Height="1"/>
+
+									<TextBlock Text="Рёбра"
+											   FontWeight="SemiBold"
+											   FontSize="14"
+											   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+
+									<Grid ColumnDefinitions="Auto,*"
+										  RowDefinitions="Auto,Auto,Auto"
+										  ColumnSpacing="12"
+										  RowSpacing="8">
+										<TextBlock Grid.Row="0" Grid.Column="0"
+												   Classes="caption" Text="Толщина"/>
+										<NumericUpDown Grid.Row="0" Grid.Column="1"
+													   Value="{Binding GraphStyle.Edge.StrokeThickness}"
+													   Minimum="1" Maximum="10"
+													   Increment="1" FormatString="0"/>
+
+										<TextBlock Grid.Row="1" Grid.Column="0"
+												   Classes="caption" Text="Шрифт"/>
+										<NumericUpDown Grid.Row="1" Grid.Column="1"
+													   Value="{Binding GraphStyle.Edge.FontSize}"
+													   Minimum="8" Maximum="30"
+													   Increment="1" FormatString="0"/>
+
+										<TextBlock Grid.Row="2" Grid.Column="0"
+												   Classes="caption" Text="Пунктир"/>
+										<CheckBox Grid.Row="2" Grid.Column="1"
+												  IsChecked="{Binding GraphStyle.Edge.IsDashed}"/>
+									</Grid>
+								</StackPanel>
+							</Expander>
+						</Border>
+
+						<!-- ======= СОХРАНЕНИЕ ======= -->
+						<Border Classes="card">
+							<Button Classes="primaryAction"
+									Command="{Binding SaveCommand}"
+									HorizontalAlignment="Stretch">
+								<TextBlock Text="💾 Сохранить граф"
+										   FontWeight="SemiBold"
+										   FontSize="15"
+										   HorizontalAlignment="Center"/>
+							</Button>
 						</Border>
 
 					</StackPanel>

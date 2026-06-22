@@ -47,10 +47,10 @@
 
 ```bash
 # Клонирование репозитория
-git clone https://github.com/ваш-аккаунт/GraphIS.git
+git clone https://github.com/prop1l/Thesis
 
 # Переход в папку проекта
-cd GraphIS
+cd Thesis
 
 # Восстановление зависимостей
 dotnet restore

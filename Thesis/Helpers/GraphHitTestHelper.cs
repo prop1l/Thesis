@@ -1,18 +1,15 @@
-﻿using Avalonia;
+using Avalonia;
 using System.Collections.Generic;
 using System.Linq;
-using Thesis.Models;
 using Thesis.ViewModels;
 
 namespace Thesis.Helpers;
 
 public static class GraphHitTestHelper
 {
-    public static Node? HitTestNode(IEnumerable<Node> nodes, Point p, double width, double height)
+    public static NodeViewModel? HitTestNode(IEnumerable<NodeViewModel> nodes, Point p)
     {
-        return nodes.FirstOrDefault(n =>
-            p.X >= n.X && p.X <= n.X + width &&
-            p.Y >= n.Y && p.Y <= n.Y + height);
+        return nodes.FirstOrDefault(n => n.Contains(p));
     }
 
     public static EdgeViewModel? HitTestEdge(IEnumerable<EdgeViewModel> edges, Point p, double threshold = 8.0)

@@ -1,6 +1,8 @@
 ﻿using System.Linq;
+using Thesis.Algorithms;
 using Thesis.Models;
 using Thesis.Models.Graph;
+using Thesis.Services;
 using Thesis.ViewModels;
 using Xunit;
 
@@ -12,8 +14,8 @@ public class GraphEditorViewModelTests
     public void AddNode_IncreasesNodesCount()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.AddNodeCommand.Execute(null);
@@ -27,8 +29,8 @@ public class GraphEditorViewModelTests
     public void AddEdge_DoesNotCreateDuplicateInUndirectedGraph()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.GraphKind = GraphKind.UndirectedUnweighted;
@@ -49,8 +51,8 @@ public class GraphEditorViewModelTests
     public void AddEdge_AllowsOppositeDirectionInDirectedGraph()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("DirectedGraph");
         vm.GraphKind = GraphKind.DirectedUnweighted;
@@ -71,8 +73,8 @@ public class GraphEditorViewModelTests
     public void DeleteSelected_RemovesNodeAndConnectedEdges()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.AddNodeAt(100, 100);
@@ -96,8 +98,8 @@ public class GraphEditorViewModelTests
     public void DeleteSelected_RemovesSelectedEdge()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.AddNodeAt(100, 100);
@@ -117,8 +119,8 @@ public class GraphEditorViewModelTests
     public void DeleteAll_RemovesAllNodesAndEdges()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.AddNodeAt(100, 100);
@@ -137,8 +139,8 @@ public class GraphEditorViewModelTests
     public void GraphKindChange_ClearsWeightsForUnweightedGraph()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("WeightedGraph");
         vm.GraphKind = GraphKind.UndirectedWeighted;
@@ -160,8 +162,8 @@ public class GraphEditorViewModelTests
     public void GraphKindChange_AddsDefaultWeightsForWeightedGraph()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("Graph");
         vm.GraphKind = GraphKind.UndirectedUnweighted;
@@ -182,8 +184,8 @@ public class GraphEditorViewModelTests
     public void UpdateSelectedEdgeWeight_UpdatesWeightInWeightedGraph()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("Graph");
         vm.GraphKind = GraphKind.UndirectedWeighted;
@@ -202,8 +204,8 @@ public class GraphEditorViewModelTests
     public void ZoomLevel_IsClamped()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.ZoomLevel = 10;
         Assert.Equal(1.5, vm.ZoomLevel);
@@ -216,8 +218,8 @@ public class GraphEditorViewModelTests
     public void Selection_SelectingNodeClearsEdgeSelection()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("Graph");
         vm.AddNodeAt(100, 100);
@@ -237,8 +239,8 @@ public class GraphEditorViewModelTests
     public void Selection_SelectingEdgeClearsNodeSelection()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("Graph");
         vm.AddNodeAt(100, 100);
@@ -258,9 +260,9 @@ public class GraphEditorViewModelTests
     public void SaveGraph_PersistsNodesAndEdges()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
+        var repository = new JsonGraphRepository(folder.PathValue);
 
-        var vm1 = new GraphEditorViewModel(welcome);
+        var vm1 = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
         vm1.LoadGraph("PersistentGraph");
         vm1.GraphKind = GraphKind.DirectedWeighted;
         vm1.AddNodeAt(10, 20);
@@ -270,7 +272,7 @@ public class GraphEditorViewModelTests
         vm1.UpdateSelectedEdgeWeight(9);
         vm1.SaveGraph();
 
-        var vm2 = new GraphEditorViewModel(welcome);
+        var vm2 = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
         vm2.LoadGraph("PersistentGraph");
 
         Assert.Equal(2, vm2.Nodes.Count);

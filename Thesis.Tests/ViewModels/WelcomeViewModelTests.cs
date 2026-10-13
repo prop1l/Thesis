@@ -1,6 +1,8 @@
 ﻿using System.Linq;
+using System.Threading.Tasks;
 using Thesis.Models;
 using Thesis.Models.Graph;
+using Thesis.Services;
 using Thesis.ViewModels;
 using Xunit;
 
@@ -12,7 +14,7 @@ public class WelcomeViewModelTests
     public void AddGraph_AddsNewGraph()
     {
         using var folder = new TestFolder();
-        var vm = new WelcomeViewModel(baseFolder: folder.PathValue);
+        var vm = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue));
 
         vm.NewGraphName = "TestGraph";
 
@@ -29,7 +31,7 @@ public class WelcomeViewModelTests
     public void AddGraph_DoesNotAddDuplicateName()
     {
         using var folder = new TestFolder();
-        var vm = new WelcomeViewModel(baseFolder: folder.PathValue);
+        var vm = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue));
 
         vm.NewGraphName = "Graph1";
         vm.AddGraphCommand.Execute(null);
@@ -45,7 +47,7 @@ public class WelcomeViewModelTests
     public void AddGraph_DoesNotAddWhenNameIsEmpty()
     {
         using var folder = new TestFolder();
-        var vm = new WelcomeViewModel(baseFolder: folder.PathValue);
+        var vm = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue));
 
         vm.NewGraphName = "   ";
 
@@ -60,7 +62,7 @@ public class WelcomeViewModelTests
     public void RenameGraph_RenamesWhenUnique()
     {
         using var folder = new TestFolder();
-        var vm = new WelcomeViewModel(baseFolder: folder.PathValue);
+        var vm = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue));
 
         vm.NewGraphName = "OldName";
         vm.AddGraphCommand.Execute(null);
@@ -77,7 +79,7 @@ public class WelcomeViewModelTests
     public void RenameGraph_ReturnsFalseWhenDuplicateExists()
     {
         using var folder = new TestFolder();
-        var vm = new WelcomeViewModel(baseFolder: folder.PathValue);
+        var vm = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue));
 
         vm.NewGraphName = "Graph1";
         vm.AddGraphCommand.Execute(null);
@@ -97,7 +99,7 @@ public class WelcomeViewModelTests
     public void DeleteGraph_RemovesGraphFromCollection()
     {
         using var folder = new TestFolder();
-        var vm = new WelcomeViewModel(baseFolder: folder.PathValue);
+        var vm = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue));
 
         vm.NewGraphName = "Graph1";
         vm.AddGraphCommand.Execute(null);
@@ -110,73 +112,65 @@ public class WelcomeViewModelTests
     }
 
     [Fact]
-    public void LoadGraphData_ReturnsEmptyGraphWhenFileDoesNotExist()
-    {
-        using var folder = new TestFolder();
-        var vm = new WelcomeViewModel(baseFolder: folder.PathValue);
-
-        var data = vm.LoadGraphData("MissingGraph");
-
-        Assert.NotNull(data);
-        Assert.Equal("MissingGraph", data!.Name);
-        Assert.Empty(data.Nodes);
-        Assert.Empty(data.Edges);
-        Assert.NotNull(data.Style);
-        Assert.Equal(GraphKind.UndirectedUnweighted, data.Kind);
-    }
-
-    [Fact]
-    public void SaveGraphData_ThenLoadGraphData_RestoresGraph()
-    {
-        using var folder = new TestFolder();
-        var vm = new WelcomeViewModel(baseFolder: folder.PathValue);
-
-        var data = new GraphData
-        {
-            Name = "GraphA",
-            Kind = GraphKind.DirectedWeighted,
-            Nodes =
-            {
-                new Node { Label = "A", X = 10, Y = 20 },
-                new Node { Label = "B", X = 30, Y = 40 }
-            }
-        };
-
-        data.Edges.Add(new Edge
-        {
-            SourceId = data.Nodes[0].Id,
-            TargetId = data.Nodes[1].Id,
-            Label = "E1",
-            Weight = 5
-        });
-
-        vm.SaveGraphData("GraphA", data);
-        var loaded = vm.LoadGraphData("GraphA");
-
-        Assert.NotNull(loaded);
-        Assert.Equal("GraphA", loaded!.Name);
-        Assert.Equal(GraphKind.DirectedWeighted, loaded.Kind);
-        Assert.Equal(2, loaded.Nodes.Count);
-        Assert.Single(loaded.Edges);
-        Assert.Equal(5, loaded.Edges[0].Weight);
-    }
-
-    [Fact]
     public void AddGraph_CreatesPersistedGraphThatIsLoadedByNewInstance()
     {
         using var folder = new TestFolder();
 
-        var vm1 = new WelcomeViewModel(baseFolder: folder.PathValue);
+        var vm1 = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue));
         vm1.NewGraphName = "PersistentGraph";
         vm1.AddGraphCommand.Execute(null);
 
-        var vm2 = new WelcomeViewModel(baseFolder: folder.PathValue);
+        var vm2 = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue));
 
         Assert.Single(vm2.GraphItems);
         Assert.Equal("PersistentGraph", vm2.GraphItems[0].Name);
 
-        var graph = vm2.LoadGraphData("PersistentGraph");
-        Assert.NotNull(graph);
-        Assert.Equal("PersistentGraph", graph!.Name);
+        var graph = new JsonGraphRepository(folder.PathValue).LoadGraph("PersistentGraph");
+        Assert.Equal("PersistentGraph", graph.Name);
+    }
+
+    [Fact]
+    public async Task RenameGraphCommand_UsesNameFromDialog()
+    {
+        using var folder = new TestFolder();
+        var windows = new FakeWindowService { RenameDialogResult = "Renamed" };
+        var vm = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue), windows);
+
+        vm.NewGraphName = "Original";
+        vm.AddGraphCommand.Execute(null);
+
+        await vm.RenameGraphCommand.ExecuteAsync(vm.GraphItems[0]);
+
+        Assert.Equal("Renamed", vm.GraphItems.Single().Name);
+    }
+
+    [Fact]
+    public async Task RenameGraphCommand_KeepsNameWhenDialogCancelled()
+    {
+        using var folder = new TestFolder();
+        var windows = new FakeWindowService { RenameDialogResult = null };
+        var vm = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue), windows);
+
+        vm.NewGraphName = "Original";
+        vm.AddGraphCommand.Execute(null);
+
+        await vm.RenameGraphCommand.ExecuteAsync(vm.GraphItems[0]);
+
+        Assert.Equal("Original", vm.GraphItems.Single().Name);
+    }
+
+    [Fact]
+    public async Task OpenGraphCommand_OpensEditorForGraph()
+    {
+        using var folder = new TestFolder();
+        var windows = new FakeWindowService();
+        var vm = new WelcomeViewModel(new JsonGraphRepository(folder.PathValue), windows);
+
+        vm.NewGraphName = "Graph";
+        vm.AddGraphCommand.Execute(null);
+
+        await vm.OpenGraphCommand.ExecuteAsync(vm.GraphItems[0]);
+
+        Assert.Equal(["Graph"], windows.OpenedEditors);
     }
 }

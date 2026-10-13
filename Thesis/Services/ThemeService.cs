@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Thesis.Services;
 
-public partial class ThemeService : ObservableObject
+public partial class ThemeService : ObservableObject, IThemeService
 {
     private readonly ColorPaletteResources _lightPalette = App.LightPalette;
     private readonly ColorPaletteResources _darkPalette = App.DarkPalette;

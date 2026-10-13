@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using Thesis.Algorithms;
 using Thesis.Models;
 using Thesis.Models.Graph;
 using Thesis.Services;
@@ -14,7 +15,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.AddNodeCommand.Execute(null);
@@ -29,7 +30,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.GraphKind = GraphKind.UndirectedUnweighted;
@@ -51,7 +52,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("DirectedGraph");
         vm.GraphKind = GraphKind.DirectedUnweighted;
@@ -73,7 +74,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.AddNodeAt(100, 100);
@@ -98,7 +99,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.AddNodeAt(100, 100);
@@ -119,7 +120,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("TestGraph");
         vm.AddNodeAt(100, 100);
@@ -139,7 +140,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("WeightedGraph");
         vm.GraphKind = GraphKind.UndirectedWeighted;
@@ -162,7 +163,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("Graph");
         vm.GraphKind = GraphKind.UndirectedUnweighted;
@@ -184,7 +185,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("Graph");
         vm.GraphKind = GraphKind.UndirectedWeighted;
@@ -204,7 +205,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.ZoomLevel = 10;
         Assert.Equal(1.5, vm.ZoomLevel);
@@ -218,7 +219,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("Graph");
         vm.AddNodeAt(100, 100);
@@ -239,7 +240,7 @@ public class GraphEditorViewModelTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("Graph");
         vm.AddNodeAt(100, 100);
@@ -261,7 +262,7 @@ public class GraphEditorViewModelTests
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
 
-        var vm1 = new GraphEditorViewModel(repository);
+        var vm1 = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
         vm1.LoadGraph("PersistentGraph");
         vm1.GraphKind = GraphKind.DirectedWeighted;
         vm1.AddNodeAt(10, 20);
@@ -271,7 +272,7 @@ public class GraphEditorViewModelTests
         vm1.UpdateSelectedEdgeWeight(9);
         vm1.SaveGraph();
 
-        var vm2 = new GraphEditorViewModel(repository);
+        var vm2 = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
         vm2.LoadGraph("PersistentGraph");
 
         Assert.Equal(2, vm2.Nodes.Count);

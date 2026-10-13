@@ -7,6 +7,7 @@ using Avalonia.Themes.Fluent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
+using Thesis.Algorithms;
 using Thesis.Services;
 using Thesis.ViewModels;
 using Thesis.Views;
@@ -49,6 +50,8 @@ namespace Thesis
                         services.AddSingleton<IThemeService, ThemeService>();
                         services.AddSingleton<IGraphRepository>(_ => new JsonGraphRepository(JsonGraphRepository.DefaultFolder));
                         services.AddSingleton<IWindowService, WindowService>();
+                        services.AddSingleton<IDijkstraSolver, DijkstraSolver>();
+                        services.AddSingleton<IComplexityAnalyzer, ComplexityAnalyzer>();
 
                         //Windows
                         services.AddTransient<Welcome>();

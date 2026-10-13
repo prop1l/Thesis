@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using Thesis.Algorithms;
 using Thesis.Models;
 using Thesis.Models.Graph;
 using Thesis.Services;
@@ -14,7 +15,7 @@ public class DijkstraTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("DijkstraGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -69,7 +70,7 @@ public class DijkstraTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("NoPathGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -104,7 +105,7 @@ public class DijkstraTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("StepGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -143,7 +144,7 @@ public class DijkstraTests
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository);
+        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
 
         vm.LoadGraph("ClearGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;

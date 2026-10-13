@@ -4,8 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
+using Thesis.Algorithms;
 using Thesis.Models;
 using Thesis.Models.Algorithms;
 using Thesis.Models.Graph;
@@ -16,6 +16,8 @@ namespace Thesis.ViewModels;
 public partial class GraphEditorViewModel : ObservableObject
 {
     private readonly IGraphRepository _repository;
+    private readonly IDijkstraSolver _dijkstraSolver;
+    private readonly IComplexityAnalyzer _complexityAnalyzer;
     private string _currentGraphName = string.Empty;
     private readonly Dictionary<string, decimal> _logicalEdgeWeights = new();
     private double _zoomLevel = 1.0;
@@ -83,9 +85,14 @@ public partial class GraphEditorViewModel : ObservableObject
             ? DijkstraSteps[CurrentDijkstraStepIndex]
             : null;
 
-    public GraphEditorViewModel(IGraphRepository repository)
+    public GraphEditorViewModel(
+        IGraphRepository repository,
+        IDijkstraSolver dijkstraSolver,
+        IComplexityAnalyzer complexityAnalyzer)
     {
         _repository = repository;
+        _dijkstraSolver = dijkstraSolver;
+        _complexityAnalyzer = complexityAnalyzer;
 
         Nodes.CollectionChanged += (_, _) => NotifyState();
         Edges.CollectionChanged += (_, _) => NotifyState();
@@ -126,75 +133,9 @@ public partial class GraphEditorViewModel : ObservableObject
     [RelayCommand]
     private void BuildPerformanceChart()
     {
-        try
-        {
-            var points = new List<PerformancePoint>();
-
-            var testSizes = new int[] { 5, 10, 20, 30, 50, 75, 100 };
-
-            foreach (var vertexCount in testSizes)
-            {
-                var logV = Math.Log(vertexCount);
-                var vLogV = vertexCount * logV;
-                var vSquared = vertexCount * vertexCount;
-                var vCubed = vertexCount * vertexCount * vertexCount;
-
-                points.Add(new PerformancePoint
-                {
-                    VertexCount = vertexCount,
-                    EdgeCount = vertexCount * (vertexCount - 1) / 2,
-                    TheoreticalTime = vLogV,
-                    Complexity = "O(V log V)"
-                });
-
-                points.Add(new PerformancePoint
-                {
-                    VertexCount = vertexCount,
-                    EdgeCount = vertexCount * (vertexCount - 1) / 2,
-                    TheoreticalTime = vSquared / 10,
-                    Complexity = "O(V²)"
-                });
-
-                points.Add(new PerformancePoint
-                {
-                    VertexCount = vertexCount,
-                    EdgeCount = vertexCount * (vertexCount - 1) / 2,
-                    TheoreticalTime = 1,
-                    Complexity = "O(1)"
-                });
-            }
-
-            ChartData = points;
-
-            PerformanceSummary = BuildComplexitySummary();
-
-            Debug.WriteLine($"✅ Построен график сложности: {points.Count} точек");
-        }
-        catch (Exception ex)
-        {
-            PerformanceSummary = $"Ошибка: {ex.Message}";
-            ChartData = new List<PerformancePoint>();
-        }
-    }
-
-    private string BuildComplexitySummary()
-    {
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine("📊 АНАЛИЗ СЛОЖНОСТИ АЛГОРИТМА ДЕЙКСТРЫ");
-        sb.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        sb.AppendLine("");
-        sb.AppendLine("График показывает теоретическую сложность");
-        sb.AppendLine("алгоритма Дейкстры в зависимости от размера графа:");
-        sb.AppendLine("");
-        sb.AppendLine("  🔵 O(1) - константная (идеальный случай)");
-        sb.AppendLine("  🟢 O(V log V) - алгоритм с бинарной кучей");
-        sb.AppendLine("  🔴 O(V²) - алгоритм без оптимизации");
-        sb.AppendLine("");
-        sb.AppendLine("Алгоритм Дейкстры с кучей (O(V log V))");
-        sb.AppendLine("значительно быстрее на больших графах,");
-        sb.AppendLine("чем реализация без кучи (O(V²)).");
-
-        return sb.ToString();
+        var report = _complexityAnalyzer.BuildComplexityReport();
+        ChartData = report.Points.ToList();
+        PerformanceSummary = report.Summary;
     }
 
     [RelayCommand]
@@ -209,7 +150,8 @@ public partial class GraphEditorViewModel : ObservableObject
         if (DijkstraStartNode is null || DijkstraEndNode is null)
             return;
 
-        var steps = BuildDijkstraSteps(DijkstraStartNode, DijkstraEndNode);
+        var steps = _dijkstraSolver.BuildSteps(
+            GetVertices(), GetArcs(), IsDirectedGraph, DijkstraStartNode.Id, DijkstraEndNode.Id);
 
         DijkstraSteps.Clear();
         foreach (var step in steps)
@@ -599,297 +541,14 @@ public partial class GraphEditorViewModel : ObservableObject
         }
     }
 
-    private List<DijkstraStep> BuildDijkstraSteps(Node start, Node end)
-    {
-        var steps = new List<DijkstraStep>();
+    public string GetAdjacencyMatrixText() =>
+        AdjacencyMatrix.BuildText(GetVertices(), GetArcs(), IsDirectedGraph, IsWeightedGraph);
 
-        var dist = Nodes.ToDictionary(n => n.Id, _ => decimal.MaxValue);
-        var prev = Nodes.ToDictionary(n => n.Id, _ => (string?)null);
-        var visited = new HashSet<string>();
+    private List<GraphVertex> GetVertices() =>
+        Nodes.Select(n => new GraphVertex(n.Id, n.Label)).ToList();
 
-        dist[start.Id] = 0;
-
-        steps.Add(CreateStep(
-            "Инициализация",
-            $"Начальная вершина: {start.Label}, конечная: {end.Label}",
-            null,
-            null,
-            visited,
-            dist,
-            prev));
-
-        while (true)
-        {
-            var current = Nodes
-                .Where(n => !visited.Contains(n.Id) && dist[n.Id] != decimal.MaxValue)
-                .OrderBy(n => dist[n.Id])
-                .FirstOrDefault();
-
-            if (current is null)
-                break;
-
-            steps.Add(CreateStep(
-                "Выбор вершины",
-                $"Выбрана вершина {current.Label} с текущим расстоянием {dist[current.Id]}",
-                current.Id,
-                null,
-                visited,
-                dist,
-                prev));
-
-            visited.Add(current.Id);
-
-            steps.Add(CreateStep(
-                "Посещение вершины",
-                $"Вершина {current.Label} помечена как обработанная",
-                current.Id,
-                null,
-                visited,
-                dist,
-                prev));
-
-            if (current.Id == end.Id)
-                break;
-
-            var outgoingEdges = GetAdjacentEdges(current);
-
-            foreach (var edge in outgoingEdges)
-            {
-                var neighborId = GetNeighborId(current.Id, edge);
-                if (neighborId is null || visited.Contains(neighborId))
-                    continue;
-
-                var weight = edge.Weight ?? 1m;
-                var candidate = dist[current.Id] + weight;
-
-                steps.Add(CreateStep(
-                    "Просмотр ребра",
-                    $"Проверяем ребро {edge.Label}: {current.Label} -> {GetNodeLabel(neighborId)}",
-                    current.Id,
-                    edge.Id,
-                    visited,
-                    dist,
-                    prev));
-
-                if (candidate < dist[neighborId])
-                {
-                    dist[neighborId] = candidate;
-                    prev[neighborId] = current.Id;
-
-                    steps.Add(CreateStep(
-                        "Обновление расстояния",
-                        $"Для вершины {GetNodeLabel(neighborId)} найден более короткий путь: {candidate}",
-                        current.Id,
-                        edge.Id,
-                        visited,
-                        dist,
-                        prev));
-                }
-            }
-        }
-
-        var pathNodeIds = ReconstructPath(start.Id, end.Id, prev);
-        var pathEdgeIds = GetPathEdgeIds(pathNodeIds);
-
-        steps.Add(new DijkstraStep
-        {
-            Index = steps.Count,
-            Title = "Кратчайший путь",
-            Description = pathNodeIds.Count == 0
-                ? "Путь не найден"
-                : $"Найден кратчайший путь длиной {dist[end.Id]}",
-            CurrentNodeId = end.Id,
-            VisitedNodeIds = new HashSet<string>(visited),
-            Distances = new Dictionary<string, decimal>(dist),
-            Previous = new Dictionary<string, string?>(prev),
-            FinalPathNodeIds = pathNodeIds,
-            FinalPathEdgeIds = pathEdgeIds,
-            IsFinished = true
-        });
-
-        return steps;
-    }
-
-    private DijkstraStep CreateStep(
-        string title,
-        string description,
-        string? currentNodeId,
-        string? examinedEdgeId,
-        HashSet<string> visited,
-        Dictionary<string, decimal> distances,
-        Dictionary<string, string?> previous)
-    {
-        return new DijkstraStep
-        {
-            Index = DijkstraSteps.Count,
-            Title = title,
-            Description = description,
-            CurrentNodeId = currentNodeId,
-            ExaminedEdgeId = examinedEdgeId,
-            VisitedNodeIds = new HashSet<string>(visited),
-            Distances = new Dictionary<string, decimal>(distances),
-            Previous = new Dictionary<string, string?>(previous)
-        };
-    }
-
-    private IEnumerable<EdgeViewModel> GetAdjacentEdges(Node node)
-    {
-        if (IsDirectedGraph)
-            return Edges.Where(e => e.SourceId == node.Id);
-
-        return Edges.Where(e => e.SourceId == node.Id || e.TargetId == node.Id);
-    }
-
-    private string? GetNeighborId(string currentId, EdgeViewModel edge)
-    {
-        if (IsDirectedGraph)
-            return edge.SourceId == currentId ? edge.TargetId : null;
-
-        if (edge.SourceId == currentId)
-            return edge.TargetId;
-
-        if (edge.TargetId == currentId)
-            return edge.SourceId;
-
-        return null;
-    }
-
-    private string GetNodeLabel(string nodeId)
-    {
-        return Nodes.FirstOrDefault(n => n.Id == nodeId)?.Label ?? nodeId;
-    }
-
-    private List<string> ReconstructPath(string startId, string endId, Dictionary<string, string?> prev)
-    {
-        var path = new List<string>();
-
-        if (startId != endId && prev[endId] is null)
-            return path;
-
-        var current = endId;
-
-        while (current is not null)
-        {
-            path.Add(current);
-
-            if (current == startId)
-                break;
-
-            current = prev[current]!;
-        }
-
-        path.Reverse();
-
-        if (path.Count == 0 || path[0] != startId)
-            return new List<string>();
-
-        return path;
-    }
-
-    private List<string> GetPathEdgeIds(List<string> pathNodeIds)
-    {
-        var result = new List<string>();
-
-        for (int i = 0; i < pathNodeIds.Count - 1; i++)
-        {
-            var from = pathNodeIds[i];
-            var to = pathNodeIds[i + 1];
-
-            var edge = IsDirectedGraph
-                ? Edges.FirstOrDefault(e => e.SourceId == from && e.TargetId == to)
-                : Edges.FirstOrDefault(e =>
-                    (e.SourceId == from && e.TargetId == to) ||
-                    (e.SourceId == to && e.TargetId == from));
-
-            if (edge is not null)
-                result.Add(edge.Id);
-        }
-
-        return result;
-    }
-
-    public string GetAdjacencyMatrixText()
-    {
-        if (Nodes.Count == 0)
-            return "Граф пуст.";
-
-        var orderedNodes = Nodes.ToList();
-        var indexById = orderedNodes
-            .Select((node, index) => new { node.Id, index })
-            .ToDictionary(x => x.Id, x => x.index);
-
-        var matrix = new decimal[orderedNodes.Count, orderedNodes.Count];
-
-        foreach (var edgeVm in Edges)
-        {
-            if (!indexById.TryGetValue(edgeVm.SourceId, out var sourceIndex))
-                continue;
-
-            if (!indexById.TryGetValue(edgeVm.TargetId, out var targetIndex))
-                continue;
-
-            var value = IsWeightedGraph
-                ? (edgeVm.Weight ?? 1m)
-                : 1m;
-
-            matrix[sourceIndex, targetIndex] = value;
-
-            if (!IsDirectedGraph)
-                matrix[targetIndex, sourceIndex] = value;
-        }
-
-        return FormatAdjacencyMatrix(orderedNodes, matrix);
-    }
-
-    private static string FormatAdjacencyMatrix(IReadOnlyList<Node> nodes, decimal[,] matrix)
-    {
-        var rowHeaderWidth = Math.Max(
-            4,
-            nodes.Max(n => string.IsNullOrWhiteSpace(n.Label) ? 1 : n.Label.Length));
-
-        var cellWidth = Math.Max(
-            3,
-            nodes.Max(n => string.IsNullOrWhiteSpace(n.Label) ? 1 : n.Label.Length));
-
-        for (var i = 0; i < nodes.Count; i++)
-        {
-            for (var j = 0; j < nodes.Count; j++)
-            {
-                var text = matrix[i, j].ToString("0.##");
-                if (text.Length > cellWidth)
-                    cellWidth = text.Length;
-            }
-        }
-
-        var lines = new List<string>();
-
-        var headerCells = new List<string>
-    {
-        "".PadRight(rowHeaderWidth)
-    };
-
-        headerCells.AddRange(nodes.Select(n =>
-            (string.IsNullOrWhiteSpace(n.Label) ? "-" : n.Label).PadLeft(cellWidth)));
-
-        lines.Add(string.Join(" ", headerCells));
-
-        for (var i = 0; i < nodes.Count; i++)
-        {
-            var row = new List<string>
-        {
-            (string.IsNullOrWhiteSpace(nodes[i].Label) ? "-" : nodes[i].Label).PadRight(rowHeaderWidth)
-        };
-
-            for (var j = 0; j < nodes.Count; j++)
-            {
-                row.Add(matrix[i, j].ToString("0.##").PadLeft(cellWidth));
-            }
-
-            lines.Add(string.Join(" ", row));
-        }
-
-        return string.Join(Environment.NewLine, lines);
-    }
+    private List<GraphArc> GetArcs() =>
+        Edges.Select(e => new GraphArc(e.Id, e.SourceId, e.TargetId, e.Label, e.Weight)).ToList();
 
     private void ApplyCurrentDijkstraStep()
     {

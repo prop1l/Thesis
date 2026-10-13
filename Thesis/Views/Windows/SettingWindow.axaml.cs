@@ -1,10 +1,9 @@
-using System;
+﻿using System;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
-using Thesis.ViewModels;
 
 namespace Thesis.Views;
 
@@ -14,6 +13,9 @@ public partial class SettingWindow : Window
     {
         InitializeComponent();
         InitializeSectionBrushes();
+
+        // Цвет секций зависит от темы — перекрашиваем при любой её смене
+        ActualThemeVariantChanged += (_, _) => InitializeSectionBrushes();
     }
 
     private void InitializeSectionBrushes()
@@ -74,14 +76,5 @@ public partial class SettingWindow : Window
         };
 
         timer.Start();
-    }
-
-    private void ThemeToggle_IsCheckedChanged(object? sender, RoutedEventArgs e)
-    {
-        if (sender is ToggleSwitch toggle && DataContext is SettingWindowViewModel vm)
-        {
-            vm.IsDarkTheme = toggle.IsChecked == true;
-            InitializeSectionBrushes();
-        }
     }
 }

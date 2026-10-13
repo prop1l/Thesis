@@ -9,12 +9,13 @@ using System.Linq;
 using Thesis.Models;
 using Thesis.Models.Algorithms;
 using Thesis.Models.Graph;
+using Thesis.Services;
 
 namespace Thesis.ViewModels;
 
 public partial class GraphEditorViewModel : ObservableObject
 {
-    private readonly WelcomeViewModel _welcome;
+    private readonly IGraphRepository _repository;
     private string _currentGraphName = string.Empty;
     private readonly Dictionary<string, decimal> _logicalEdgeWeights = new();
     private double _zoomLevel = 1.0;
@@ -82,9 +83,9 @@ public partial class GraphEditorViewModel : ObservableObject
             ? DijkstraSteps[CurrentDijkstraStepIndex]
             : null;
 
-    public GraphEditorViewModel(WelcomeViewModel welcome)
+    public GraphEditorViewModel(IGraphRepository repository)
     {
-        _welcome = welcome;
+        _repository = repository;
 
         Nodes.CollectionChanged += (_, _) => NotifyState();
         Edges.CollectionChanged += (_, _) => NotifyState();
@@ -293,7 +294,7 @@ public partial class GraphEditorViewModel : ObservableObject
         _currentGraphName = graphName;
         GraphName = graphName;
 
-        var data = _welcome.LoadGraphData(graphName);
+        var data = _repository.LoadGraph(graphName);
 
         Nodes.Clear();
         Edges.Clear();
@@ -482,7 +483,7 @@ public partial class GraphEditorViewModel : ObservableObject
             LastModified = DateTime.Now
         };
 
-        _welcome.SaveGraphData(_currentGraphName, data);
+        _repository.SaveGraph(_currentGraphName, data);
     }
 
     partial void OnSelectedNodeChanged(Node? value)

@@ -3,7 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:Thesis.ViewModels"
-        xmlns:models="clr-namespace:Thesis.Models"
+        xmlns:graph="clr-namespace:Thesis.Models.Graph"
         mc:Ignorable="d"
         x:Class="Thesis.Views.Welcome"
         x:DataType="vm:WelcomeViewModel"
@@ -104,8 +104,7 @@
                                   VerticalAlignment="Center"
                                   OffContent="☀"
                                   OnContent="🌙"
-                                  IsChecked="{Binding IsDarkTheme}"
-                                  IsCheckedChanged="ThemeToggle_IsCheckedChanged"/>
+                                  IsChecked="{Binding IsDarkTheme}"/>
                 </Grid>
             </Border>
 
@@ -136,20 +135,20 @@
                                 </ItemsControl.ItemsPanel>
 
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
+                                    <DataTemplate x:DataType="graph:GraphItem">
                                         <Button Margin="8,8,8,8"
                                                 MinHeight="120"
                                                 HorizontalAlignment="Stretch"
                                                 Classes="graph-card-button"
-                                                CommandParameter="{Binding}"
-                                                Click="GraphCard_Click">
+                                                Command="{Binding #GraphsList.((vm:WelcomeViewModel)DataContext).OpenGraphCommand}"
+                                                CommandParameter="{Binding}">
                                             <Button.ContextMenu>
                                                 <ContextMenu>
                                                     <MenuItem Header="Переименовать"
-                                                              Click="RenameGraphMenuItem_Click"
+                                                              Command="{Binding #GraphsList.((vm:WelcomeViewModel)DataContext).RenameGraphCommand}"
                                                               CommandParameter="{Binding}" />
                                                     <MenuItem Header="Удалить"
-                                                              Command="{Binding #GraphsList.DataContext.DeleteGraphCommand}"
+                                                              Command="{Binding #GraphsList.((vm:WelcomeViewModel)DataContext).DeleteGraphCommand}"
                                                               CommandParameter="{Binding}" />
                                                 </ContextMenu>
                                             </Button.ContextMenu>

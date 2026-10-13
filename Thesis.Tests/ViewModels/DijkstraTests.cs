@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using Thesis.Models;
 using Thesis.Models.Graph;
+using Thesis.Services;
 using Thesis.ViewModels;
 using Xunit;
 
@@ -12,8 +13,8 @@ public class DijkstraTests
     public void RunDijkstra_FindsShortestPath()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository);
 
         vm.LoadGraph("DijkstraGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -67,8 +68,8 @@ public class DijkstraTests
     public void RunDijkstra_WhenNoPath_FinishesWithEmptyFinalPath()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository);
 
         vm.LoadGraph("NoPathGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -102,8 +103,8 @@ public class DijkstraTests
     public void NextAndPreviousDijkstraStep_ChangesCurrentStepIndex()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository);
 
         vm.LoadGraph("StepGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -141,8 +142,8 @@ public class DijkstraTests
     public void ClearDijkstra_ResetsState()
     {
         using var folder = new TestFolder();
-        var welcome = new WelcomeViewModel(baseFolder: folder.PathValue);
-        var vm = new GraphEditorViewModel(welcome);
+        var repository = new JsonGraphRepository(folder.PathValue);
+        var vm = new GraphEditorViewModel(repository);
 
         vm.LoadGraph("ClearGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;

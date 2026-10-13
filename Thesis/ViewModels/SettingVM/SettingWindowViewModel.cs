@@ -7,7 +7,7 @@ namespace Thesis.ViewModels;
  
 public partial class SettingWindowViewModel : ObservableObject
 {
-    private readonly ThemeService _themeService;
+    private readonly IThemeService _themeService;
 
     [ObservableProperty]
     private bool useCompactDensity = true;
@@ -39,16 +39,16 @@ public partial class SettingWindowViewModel : ObservableObject
         set => _themeService.AccentColor = value;
     }
 
-    public SettingWindowViewModel(ThemeService themeService)
+    public SettingWindowViewModel(IThemeService themeService)
     {
         _themeService = themeService;
 
         _themeService.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(ThemeService.IsDarkTheme))
+            if (e.PropertyName == nameof(IThemeService.IsDarkTheme))
                 OnPropertyChanged(nameof(IsDarkTheme));
 
-            if (e.PropertyName == nameof(ThemeService.AccentColor))
+            if (e.PropertyName == nameof(IThemeService.AccentColor))
                 OnPropertyChanged(nameof(AccentColor));
         };
     }

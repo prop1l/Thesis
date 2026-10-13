@@ -1,4 +1,4 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
@@ -27,9 +27,6 @@ namespace Thesis
 
         public IHost? Host { get; private set; }
 
-        // Добавьте это свойство для доступа к сервисам
-        public IServiceProvider? Services => Host?.Services;
-
         public override void Initialize()
         {
             AvaloniaXamlLoader.Load(this);
@@ -49,7 +46,9 @@ namespace Thesis
                     .ConfigureServices((context, services) =>
                     {
                         //Services
-                        services.AddSingleton<ThemeService>();
+                        services.AddSingleton<IThemeService, ThemeService>();
+                        services.AddSingleton<IGraphRepository>(_ => new JsonGraphRepository(JsonGraphRepository.DefaultFolder));
+                        services.AddSingleton<IWindowService, WindowService>();
 
                         //Windows
                         services.AddTransient<Welcome>();
@@ -64,6 +63,7 @@ namespace Thesis
                     .Build();
 
                 Host.Start();
+                desktop.Exit += (_, _) => Host.Dispose();
 
                 var welcomeViewModel = Host.Services.GetRequiredService<WelcomeViewModel>();
                 desktop.MainWindow = Host.Services.GetRequiredService<Welcome>();

@@ -1,11 +1,14 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using Avalonia;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using Thesis.Algorithms;
+using Thesis.Helpers;
 using Thesis.Models;
 using Thesis.Models.Algorithms;
 using Thesis.Models.Graph;
@@ -15,40 +18,41 @@ namespace Thesis.ViewModels;
 
 public partial class GraphEditorViewModel : ObservableObject
 {
+    private const double CanvasMaxCoordinate = 1960;
+
     private readonly IGraphRepository _repository;
     private readonly IDijkstraSolver _dijkstraSolver;
     private readonly IComplexityAnalyzer _complexityAnalyzer;
-    private string _currentGraphName = string.Empty;
     private readonly Dictionary<string, decimal> _logicalEdgeWeights = new();
+    private string _currentGraphName = string.Empty;
     private double _zoomLevel = 1.0;
     private bool _isGraphLoaded;
 
+    // Пока true, изменения веса рёбер не синхронизируются и не сохраняются
+    // (массовая смена весов при смене типа графа или синхронизации парных рёбер)
+    private bool _suppressWeightSync;
+
     [ObservableProperty] private string graphName = string.Empty;
-    [ObservableProperty] private ObservableCollection<Node> nodes = new();
-    [ObservableProperty] private ObservableCollection<EdgeViewModel> edges = new();
-    [ObservableProperty] private Node? selectedNode;
+    [ObservableProperty] private NodeViewModel? selectedNode;
     [ObservableProperty] private EdgeViewModel? selectedEdge;
     [ObservableProperty] private GraphStyle graphStyle = new();
     [ObservableProperty] private GraphKind graphKind = GraphKind.UndirectedUnweighted;
     [ObservableProperty] private GraphKindOption? selectedGraphKindOption;
 
-    [ObservableProperty] private Node? dijkstraStartNode;
-    [ObservableProperty] private Node? dijkstraEndNode;
-    [ObservableProperty] private ObservableCollection<DijkstraStep> dijkstraSteps = new();
+    [ObservableProperty] private NodeViewModel? dijkstraStartNode;
+    [ObservableProperty] private NodeViewModel? dijkstraEndNode;
     [ObservableProperty] private int currentDijkstraStepIndex = -1;
     [ObservableProperty] private bool isDijkstraMode;
     [ObservableProperty] private string dijkstraStatus = "Алгоритм не запущен";
 
     [ObservableProperty] private string performanceSummary = string.Empty;
+    [ObservableProperty] private IReadOnlyList<PerformancePoint> chartData = [];
 
     [ObservableProperty] private string adjacencyMatrixText = string.Empty;
 
-    private List<PerformancePoint> _chartData = new();
-    public List<PerformancePoint> ChartData
-    {
-        get => _chartData;
-        set => SetProperty(ref _chartData, value);
-    }
+    public ObservableCollection<NodeViewModel> Nodes { get; } = new();
+    public ObservableCollection<EdgeViewModel> Edges { get; } = new();
+    public ObservableCollection<DijkstraStep> DijkstraSteps { get; } = new();
 
     public ObservableCollection<GraphKindOption> GraphKindOptions { get; } = new()
     {
@@ -95,11 +99,221 @@ public partial class GraphEditorViewModel : ObservableObject
         _complexityAnalyzer = complexityAnalyzer;
 
         Nodes.CollectionChanged += (_, _) => NotifyState();
-        Edges.CollectionChanged += (_, _) => NotifyState();
+        Edges.CollectionChanged += OnEdgesCollectionChanged;
 
         SubscribeToGraphStyle(GraphStyle);
         SelectedGraphKindOption = GraphKindOptions.FirstOrDefault(x => x.Value == GraphKind);
     }
+
+    #region Loading and saving
+
+    public void LoadGraph(string graphName)
+    {
+        _isGraphLoaded = false;
+
+        _currentGraphName = graphName;
+        GraphName = graphName;
+
+        var data = _repository.LoadGraph(graphName);
+
+        ClearDijkstra();
+        ClearGraph();
+
+        GraphStyle = data.Style ?? new GraphStyle();
+        GraphKind = data.Kind;
+        SelectedGraphKindOption = GraphKindOptions.FirstOrDefault(x => x.Value == GraphKind);
+
+        foreach (var node in data.Nodes)
+            Nodes.Add(new NodeViewModel(node, GraphStyle.Node));
+
+        var nodesById = Nodes.ToDictionary(n => n.Id);
+
+        foreach (var edge in data.Edges)
+        {
+            // Ребро на несуществующую вершину (повреждённый файл) пропускаем
+            if (nodesById.TryGetValue(edge.SourceId, out var source) &&
+                nodesById.TryGetValue(edge.TargetId, out var target))
+            {
+                Edges.Add(new EdgeViewModel(edge, source, target, GraphStyle));
+            }
+        }
+
+        RebuildLogicalWeights();
+
+        NotifyState();
+        OnPropertyChanged(nameof(IsDirectedGraph));
+        OnPropertyChanged(nameof(IsWeightedGraph));
+
+        _isGraphLoaded = true;
+        UpdateAdjacencyMatrix();
+    }
+
+    public void SaveGraph()
+    {
+        if (!_isGraphLoaded || string.IsNullOrWhiteSpace(_currentGraphName))
+            return;
+
+        var data = new GraphData
+        {
+            Name = GraphName,
+            Nodes = new ObservableCollection<Node>(Nodes.Select(n => new Node
+            {
+                Id = n.Id,
+                Label = n.Label,
+                X = n.X,
+                Y = n.Y
+            })),
+            Edges = new ObservableCollection<Edge>(Edges.Select(e => new Edge
+            {
+                Id = e.Id,
+                SourceId = e.SourceId,
+                TargetId = e.TargetId,
+                Label = e.Label,
+                Weight = e.Weight
+            })),
+            Style = GraphStyle,
+            Kind = GraphKind,
+            LastModified = DateTime.Now
+        };
+
+        _repository.SaveGraph(_currentGraphName, data);
+    }
+
+    [RelayCommand]
+    private void Save()
+    {
+        SaveGraph();
+    }
+
+    #endregion
+
+    #region Editing
+
+    [RelayCommand]
+    private void AddNode()
+    {
+        AddNodeAt(100 + Nodes.Count * 30, 100 + Nodes.Count * 30);
+    }
+
+    public void AddNodeAt(double x, double y)
+    {
+        var node = new Node
+        {
+            Label = $"Вершина {Nodes.Count + 1}",
+            X = Math.Clamp(x, 0, CanvasMaxCoordinate),
+            Y = Math.Clamp(y, 0, CanvasMaxCoordinate)
+        };
+
+        Nodes.Add(new NodeViewModel(node, GraphStyle.Node));
+
+        SaveGraph();
+        UpdateAdjacencyMatrix();
+    }
+
+    public void AddEdge(NodeViewModel source, NodeViewModel target)
+    {
+        if (source.Id == target.Id)
+            return;
+
+        var exists = IsDirectedGraph
+            ? Edges.Any(e => e.SourceId == source.Id && e.TargetId == target.Id)
+            : Edges.Any(e =>
+                (e.SourceId == source.Id && e.TargetId == target.Id) ||
+                (e.SourceId == target.Id && e.TargetId == source.Id));
+
+        if (exists)
+            return;
+
+        // Ребро между той же парой вершин (например, обратное в орграфе) получает тот же вес
+        decimal? weight = IsWeightedGraph ? GetLogicalWeight(source.Id, target.Id) : null;
+
+        var edge = new Edge
+        {
+            SourceId = source.Id,
+            TargetId = target.Id,
+            Label = $"Ребро {Edges.Count + 1}",
+            Weight = weight
+        };
+
+        var vm = new EdgeViewModel(edge, source, target, GraphStyle);
+        Edges.Add(vm);
+
+        if (weight.HasValue)
+            SyncLinkedEdgeWeights(source.Id, target.Id, weight.Value);
+
+        SelectedEdge = vm;
+
+        SaveGraph();
+        UpdateAdjacencyMatrix();
+    }
+
+    [RelayCommand]
+    private void DeleteAll()
+    {
+        SelectedNode = null;
+        SelectedEdge = null;
+        ClearDijkstra();
+        ClearGraph();
+        SaveGraph();
+        UpdateAdjacencyMatrix();
+    }
+
+    [RelayCommand]
+    private void DeleteSelected()
+    {
+        if (SelectedNode is not null)
+        {
+            var node = SelectedNode;
+            SelectedNode = null;
+
+            foreach (var edge in Edges.Where(e => e.SourceId == node.Id || e.TargetId == node.Id).ToList())
+                Edges.Remove(edge);
+
+            Nodes.Remove(node);
+            node.Detach();
+        }
+        else if (SelectedEdge is not null)
+        {
+            var edge = SelectedEdge;
+            SelectedEdge = null;
+            Edges.Remove(edge);
+        }
+
+        ClearDijkstra();
+        SaveGraph();
+        UpdateAdjacencyMatrix();
+    }
+
+    public void UpdateSelectedEdgeWeight(decimal? newWeight)
+    {
+        if (SelectedEdge is null || !IsWeightedGraph || newWeight is null)
+            return;
+
+        // Остальное (синхронизация парных рёбер и сохранение) делает OnEdgePropertyChanged —
+        // тот же путь, что и при правке веса в панели свойств
+        SelectedEdge.Weight = newWeight;
+    }
+
+    private void ClearGraph()
+    {
+        // Clear() не передаёт удалённые элементы в CollectionChanged, поэтому отписываемся вручную
+        foreach (var edge in Edges)
+        {
+            edge.PropertyChanged -= OnEdgePropertyChanged;
+            edge.Detach();
+        }
+
+        foreach (var node in Nodes)
+            node.Detach();
+
+        Edges.Clear();
+        Nodes.Clear();
+        _logicalEdgeWeights.Clear();
+    }
+
+    #endregion
+
+    #region Edge weights
 
     private static string GetUndirectedPairKey(string sourceId, string targetId)
     {
@@ -116,33 +330,209 @@ public partial class GraphEditorViewModel : ObservableObject
 
     private void SetLogicalWeight(string sourceId, string targetId, decimal weight)
     {
-        var key = GetUndirectedPairKey(sourceId, targetId);
-        _logicalEdgeWeights[key] = weight;
+        _logicalEdgeWeights[GetUndirectedPairKey(sourceId, targetId)] = weight;
     }
 
     private void SyncLinkedEdgeWeights(string sourceId, string targetId, decimal weight)
     {
-        var linkedEdges = Edges.Where(e =>
-            (e.SourceId == sourceId && e.TargetId == targetId) ||
-            (e.SourceId == targetId && e.TargetId == sourceId));
+        _suppressWeightSync = true;
+        try
+        {
+            var linkedEdges = Edges.Where(e =>
+                (e.SourceId == sourceId && e.TargetId == targetId) ||
+                (e.SourceId == targetId && e.TargetId == sourceId));
 
-        foreach (var edge in linkedEdges)
-            edge.Weight = weight;
+            foreach (var edge in linkedEdges)
+                edge.Weight = weight;
+        }
+        finally
+        {
+            _suppressWeightSync = false;
+        }
+    }
+
+    private void RebuildLogicalWeights()
+    {
+        _logicalEdgeWeights.Clear();
+
+        foreach (var edge in Edges.Where(e => e.Weight.HasValue))
+            _logicalEdgeWeights.TryAdd(GetUndirectedPairKey(edge.SourceId, edge.TargetId), edge.Weight!.Value);
+    }
+
+    private void OnEdgesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (EdgeViewModel edge in e.OldItems)
+            {
+                edge.PropertyChanged -= OnEdgePropertyChanged;
+                edge.Detach();
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (EdgeViewModel edge in e.NewItems)
+                edge.PropertyChanged += OnEdgePropertyChanged;
+        }
+
+        NotifyState();
+    }
+
+    private void OnEdgePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_suppressWeightSync ||
+            e.PropertyName != nameof(EdgeViewModel.Weight) ||
+            sender is not EdgeViewModel edge ||
+            !IsWeightedGraph ||
+            edge.Weight is not { } weight)
+            return;
+
+        SetLogicalWeight(edge.SourceId, edge.TargetId, weight);
+        SyncLinkedEdgeWeights(edge.SourceId, edge.TargetId, weight);
+        SaveGraph();
+        UpdateAdjacencyMatrix();
+    }
+
+    #endregion
+
+    #region Canvas interaction
+
+    // Методы ниже вызываются из code-behind окна при событиях мыши.
+    // Вся логика (выделение, перетаскивание, создание рёбер) живёт здесь и покрыта тестами.
+
+    private NodeViewModel? _dragNode;
+    private Point _dragStart;
+    private Point _nodeStart;
+    private NodeViewModel? _edgeStartNode;
+
+    [ObservableProperty] private bool isCreatingEdge;
+    [ObservableProperty] private Point pendingEdgeStart;
+    [ObservableProperty] private Point pendingEdgeEnd;
+
+    /// <summary>ЛКМ: выделить вершину и начать её перетаскивание, либо выделить ребро, либо снять выделение.</summary>
+    public void OnCanvasLeftPressed(Point position)
+    {
+        var node = GraphHitTestHelper.HitTestNode(Nodes, position);
+
+        if (node is not null)
+        {
+            SelectedNode = node;
+
+            _dragNode = node;
+            _dragStart = position;
+            _nodeStart = new Point(node.X, node.Y);
+            return;
+        }
+
+        _dragNode = null;
+
+        var edge = GraphHitTestHelper.HitTestEdge(Edges, position);
+
+        if (edge is not null)
+        {
+            SelectedEdge = edge;
+            return;
+        }
+
+        SelectedNode = null;
+        SelectedEdge = null;
+    }
+
+    /// <summary>ПКМ по вершине: первый клик начинает ребро, второй — создаёт его. ПКМ по пустому месту — отмена.</summary>
+    public void OnCanvasRightPressed(Point position)
+    {
+        var node = GraphHitTestHelper.HitTestNode(Nodes, position);
+
+        if (node is null)
+        {
+            CancelEdgeCreation();
+            return;
+        }
+
+        SelectedNode = node;
+
+        if (_edgeStartNode is null)
+        {
+            _edgeStartNode = node;
+            PendingEdgeStart = node.Center;
+            PendingEdgeEnd = node.Center;
+            IsCreatingEdge = true;
+            return;
+        }
+
+        if (_edgeStartNode.Id != node.Id)
+            AddEdge(_edgeStartNode, node);
+
+        CancelEdgeCreation();
+    }
+
+    public void OnCanvasPointerMoved(Point position)
+    {
+        if (_edgeStartNode is not null)
+        {
+            PendingEdgeStart = _edgeStartNode.Center;
+            PendingEdgeEnd = position;
+            return;
+        }
+
+        if (_dragNode is null)
+            return;
+
+        _dragNode.X = Math.Clamp(_nodeStart.X + position.X - _dragStart.X, 0, CanvasMaxCoordinate);
+        _dragNode.Y = Math.Clamp(_nodeStart.Y + position.Y - _dragStart.Y, 0, CanvasMaxCoordinate);
+    }
+
+    public void OnCanvasPointerReleased()
+    {
+        if (_dragNode is not null)
+            SaveGraph();
+
+        _dragNode = null;
+    }
+
+    public void CancelEdgeCreation()
+    {
+        _edgeStartNode = null;
+        IsCreatingEdge = false;
+    }
+
+    /// <summary>Центр области, занятой вершинами, — чтобы прокрутить к графу при открытии окна.</summary>
+    public Point? GetGraphCenter()
+    {
+        if (Nodes.Count == 0)
+            return null;
+
+        return new Point(
+            (Nodes.Min(n => n.X) + Nodes.Max(n => n.X)) / 2,
+            (Nodes.Min(n => n.Y) + Nodes.Max(n => n.Y)) / 2);
+    }
+
+    #endregion
+
+    #region Zoom
+
+    [RelayCommand]
+    private void ZoomIn()
+    {
+        ZoomLevel += 0.1;
     }
 
     [RelayCommand]
-    private void BuildPerformanceChart()
+    private void ZoomOut()
     {
-        var report = _complexityAnalyzer.BuildComplexityReport();
-        ChartData = report.Points.ToList();
-        PerformanceSummary = report.Summary;
+        ZoomLevel -= 0.1;
     }
 
     [RelayCommand]
-    private void BuildAdjacencyMatrix()
+    private void ResetZoom()
     {
-        AdjacencyMatrixText = GetAdjacencyMatrixText();
+        ZoomLevel = 1.0;
     }
+
+    #endregion
+
+    #region Dijkstra
 
     [RelayCommand]
     private void RunDijkstra()
@@ -193,11 +583,7 @@ public partial class GraphEditorViewModel : ObservableObject
         DijkstraStatus = "Алгоритм не запущен";
 
         foreach (var node in Nodes)
-        {
-            node.IsHighlighted = false;
-            node.IsVisited = false;
-            node.DistanceLabel = string.Empty;
-        }
+            node.ResetAlgorithmState();
 
         foreach (var edge in Edges)
         {
@@ -206,240 +592,98 @@ public partial class GraphEditorViewModel : ObservableObject
             edge.IsPathEdge = false;
         }
 
-        OnPropertyChanged(nameof(CurrentDijkstraStep));
-        OnPropertyChanged(nameof(CanGoToNextStep));
-        OnPropertyChanged(nameof(CanGoToPreviousStep));
+        NotifyStepState();
     }
 
-    [RelayCommand]
-    private void ZoomIn()
+    private void ApplyCurrentDijkstraStep()
     {
-        ZoomLevel += 0.1;
-    }
-
-    [RelayCommand]
-    private void ZoomOut()
-    {
-        ZoomLevel -= 0.1;
-    }
-
-    [RelayCommand]
-    private void ResetZoom()
-    {
-        ZoomLevel = 1.0;
-    }
-
-    public void LoadGraph(string graphName)
-    {
-        _isGraphLoaded = false;
-
-        _currentGraphName = graphName;
-        GraphName = graphName;
-
-        var data = _repository.LoadGraph(graphName);
-
-        Nodes.Clear();
-        Edges.Clear();
-        ClearDijkstra();
-
-        if (data is null)
-        {
-            GraphStyle = new GraphStyle();
-            GraphKind = GraphKind.UndirectedUnweighted;
-            SelectedGraphKindOption = GraphKindOptions.First(x => x.Value == GraphKind);
-            SubscribeToGraphStyle(GraphStyle);
-            _isGraphLoaded = true;
-            return;
-        }
-
-        GraphStyle = data.Style ?? new GraphStyle();
-        GraphKind = data.Kind;
-        SelectedGraphKindOption = GraphKindOptions.FirstOrDefault(x => x.Value == GraphKind);
-
-        SubscribeToGraphStyle(GraphStyle);
-
-        foreach (var node in data.Nodes)
-            Nodes.Add(node);
-
-        foreach (var edge in data.Edges)
-            Edges.Add(new EdgeViewModel(edge, Nodes, GraphStyle));
-
-        RebuildLogicalWeights();
-
-        NotifyState();
-        OnPropertyChanged(nameof(GraphStyle));
-        OnPropertyChanged(nameof(GraphKind));
-        OnPropertyChanged(nameof(IsDirectedGraph));
-        OnPropertyChanged(nameof(IsWeightedGraph));
-
-        _isGraphLoaded = true;
-        AdjacencyMatrixText = GetAdjacencyMatrixText();
-    }
-
-    [RelayCommand]
-    private void AddNode()
-    {
-        AddNodeAt(100 + Nodes.Count * 30, 100 + Nodes.Count * 30);
-    }
-
-    public void AddNodeAt(double x, double y)
-    {
-        Nodes.Add(new Node
-        {
-            Label = $"Вершина {Nodes.Count + 1}",
-            X = Math.Clamp(x, 0, 1960),
-            Y = Math.Clamp(y, 0, 1960)
-        });
-
-        SaveGraph();
-        AdjacencyMatrixText = GetAdjacencyMatrixText();
-    }
-
-    public void AddEdge(Node source, Node target)
-    {
-        if (source.Id == target.Id)
+        var step = CurrentDijkstraStep;
+        if (step is null)
             return;
 
-        var exists = IsDirectedGraph
-            ? Edges.Any(e => e.SourceId == source.Id && e.TargetId == target.Id)
-            : Edges.Any(e =>
-                (e.SourceId == source.Id && e.TargetId == target.Id) ||
-                (e.SourceId == target.Id && e.TargetId == source.Id));
+        DijkstraStatus = step.Description;
 
-        if (exists)
-            return;
-
-        decimal? weight = null;
-
-        if (IsWeightedGraph)
+        foreach (var node in Nodes)
         {
-            var logicalWeight = GetLogicalWeight(source.Id, target.Id);
-            weight = logicalWeight;
+            node.IsVisited = step.VisitedNodeIds.Contains(node.Id);
+            node.IsCurrent = node.Id == step.CurrentNodeId;
+            node.IsOnPath = step.FinalPathNodeIds.Contains(node.Id);
+
+            node.DistanceLabel = step.Distances.TryGetValue(node.Id, out var distance) && distance != decimal.MaxValue
+                ? distance.ToString()
+                : "∞";
         }
 
-        var edge = new Edge
+        foreach (var edge in Edges)
         {
-            SourceId = source.Id,
-            TargetId = target.Id,
-            Label = $"Ребро {Edges.Count + 1}",
-            Weight = weight
-        };
+            edge.IsExamined = edge.Id == step.ExaminedEdgeId;
+            edge.IsPathEdge = step.FinalPathEdgeIds.Contains(edge.Id);
+            edge.IsHighlighted = edge.IsExamined || edge.IsPathEdge;
+        }
 
-        var vm = new EdgeViewModel(edge, Nodes, GraphStyle);
-        Edges.Add(vm);
+        NotifyStepState();
+    }
 
-        if (IsWeightedGraph && weight.HasValue)
-            SyncLinkedEdgeWeights(source.Id, target.Id, weight.Value);
+    #endregion
 
-        SelectedEdge = vm;
-        SelectedNode = null;
+    #region Analysis
 
-        SaveGraph();
-        AdjacencyMatrixText = GetAdjacencyMatrixText();
+    [RelayCommand]
+    private void BuildPerformanceChart()
+    {
+        var report = _complexityAnalyzer.BuildComplexityReport();
+        ChartData = report.Points;
+        PerformanceSummary = report.Summary;
     }
 
     [RelayCommand]
-    private void DeleteAll()
+    private void BuildAdjacencyMatrix()
     {
-        Nodes.Clear();
-        Edges.Clear();
-        SelectedNode = null;
-        SelectedEdge = null;
-        ClearDijkstra();
-        SaveGraph();
+        UpdateAdjacencyMatrix();
+    }
+
+    public string GetAdjacencyMatrixText() =>
+        AdjacencyMatrix.BuildText(GetVertices(), GetArcs(), IsDirectedGraph, IsWeightedGraph);
+
+    private void UpdateAdjacencyMatrix()
+    {
         AdjacencyMatrixText = GetAdjacencyMatrixText();
     }
 
-    [RelayCommand]
-    private void DeleteSelected()
+    private List<GraphVertex> GetVertices() =>
+        Nodes.Select(n => new GraphVertex(n.Id, n.Label)).ToList();
+
+    private List<GraphArc> GetArcs() =>
+        Edges.Select(e => new GraphArc(e.Id, e.SourceId, e.TargetId, e.Label, e.Weight)).ToList();
+
+    #endregion
+
+    #region Property change hooks
+
+    partial void OnSelectedNodeChanged(NodeViewModel? oldValue, NodeViewModel? newValue)
     {
-        if (SelectedNode is not null)
-        {
-            var node = SelectedNode;
-            var related = Edges
-                .Where(e => e.SourceId == node.Id || e.TargetId == node.Id)
-                .ToList();
+        if (oldValue is not null)
+            oldValue.IsSelected = false;
 
-            foreach (var edge in related)
-                Edges.Remove(edge);
-
-            Nodes.Remove(node);
-            SelectedNode = null;
-        }
-        else if (SelectedEdge is not null)
+        if (newValue is not null)
         {
-            Edges.Remove(SelectedEdge);
+            newValue.IsSelected = true;
             SelectedEdge = null;
         }
-
-        ClearDijkstra();
-        SaveGraph();
-        AdjacencyMatrixText = GetAdjacencyMatrixText();
-    }
-
-    [RelayCommand]
-    private void Save()
-    {
-        SaveGraph();
-    }
-
-    public void UpdateSelectedEdgeWeight(decimal? newWeight)
-    {
-        if (SelectedEdge is null || !IsWeightedGraph || newWeight is null)
-            return;
-
-        SetLogicalWeight(SelectedEdge.SourceId, SelectedEdge.TargetId, newWeight.Value);
-        SyncLinkedEdgeWeights(SelectedEdge.SourceId, SelectedEdge.TargetId, newWeight.Value);
-        SaveGraph();
-        AdjacencyMatrixText = GetAdjacencyMatrixText();
-    }
-
-    public void SaveGraph()
-    {
-        if (!_isGraphLoaded || string.IsNullOrWhiteSpace(_currentGraphName))
-            return;
-
-        var data = new GraphData
-        {
-            Name = GraphName,
-            Nodes = new ObservableCollection<Node>(Nodes.Select(n => new Node
-            {
-                Id = n.Id,
-                Label = n.Label,
-                X = n.X,
-                Y = n.Y,
-                IsVisited = n.IsVisited,
-                IsHighlighted = n.IsHighlighted,
-                DistanceLabel = n.DistanceLabel
-            })),
-            Edges = new ObservableCollection<Edge>(Edges.Select(e => new Edge
-            {
-                Id = e.Id,
-                SourceId = e.SourceId,
-                TargetId = e.TargetId,
-                Label = e.Label,
-                Weight = e.Weight
-            })),
-            Style = GraphStyle,
-            Kind = GraphKind,
-            LastModified = DateTime.Now
-        };
-
-        _repository.SaveGraph(_currentGraphName, data);
-    }
-
-    partial void OnSelectedNodeChanged(Node? value)
-    {
-        if (value is not null && SelectedEdge is not null)
-            SelectedEdge = null;
 
         NotifySelection();
     }
 
-    partial void OnSelectedEdgeChanged(EdgeViewModel? value)
+    partial void OnSelectedEdgeChanged(EdgeViewModel? oldValue, EdgeViewModel? newValue)
     {
-        if (value is not null && SelectedNode is not null)
+        if (oldValue is not null)
+            oldValue.IsSelected = false;
+
+        if (newValue is not null)
+        {
+            newValue.IsSelected = true;
             SelectedNode = null;
+        }
 
         NotifySelection();
     }
@@ -447,7 +691,6 @@ public partial class GraphEditorViewModel : ObservableObject
     partial void OnGraphStyleChanged(GraphStyle value)
     {
         SubscribeToGraphStyle(value);
-        OnPropertyChanged(nameof(GraphStyle));
         SaveGraph();
     }
 
@@ -455,15 +698,23 @@ public partial class GraphEditorViewModel : ObservableObject
     {
         SelectedGraphKindOption = GraphKindOptions.FirstOrDefault(x => x.Value == value);
 
-        if (!IsWeightedGraph)
+        _suppressWeightSync = true;
+        try
         {
-            foreach (var edge in Edges)
-                edge.Weight = null;
+            if (!IsWeightedGraph)
+            {
+                foreach (var edge in Edges)
+                    edge.Weight = null;
+            }
+            else
+            {
+                foreach (var edge in Edges.Where(e => e.Weight is null))
+                    edge.Weight = 1;
+            }
         }
-        else
+        finally
         {
-            foreach (var edge in Edges.Where(e => e.Weight is null))
-                edge.Weight = 1;
+            _suppressWeightSync = false;
         }
 
         ClearDijkstra();
@@ -479,21 +730,19 @@ public partial class GraphEditorViewModel : ObservableObject
             GraphKind = value.Value;
     }
 
-    partial void OnDijkstraStartNodeChanged(Node? value)
+    partial void OnDijkstraStartNodeChanged(NodeViewModel? value)
     {
         OnPropertyChanged(nameof(CanRunDijkstra));
     }
 
-    partial void OnDijkstraEndNodeChanged(Node? value)
+    partial void OnDijkstraEndNodeChanged(NodeViewModel? value)
     {
         OnPropertyChanged(nameof(CanRunDijkstra));
     }
 
     partial void OnCurrentDijkstraStepIndexChanged(int value)
     {
-        OnPropertyChanged(nameof(CurrentDijkstraStep));
-        OnPropertyChanged(nameof(CanGoToNextStep));
-        OnPropertyChanged(nameof(CanGoToPreviousStep));
+        NotifyStepState();
     }
 
     private void SubscribeToGraphStyle(GraphStyle style)
@@ -509,7 +758,6 @@ public partial class GraphEditorViewModel : ObservableObject
 
     private void OnGraphStylePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        OnPropertyChanged(nameof(GraphStyle));
         SaveGraph();
     }
 
@@ -528,57 +776,14 @@ public partial class GraphEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(IsNothingSelected));
     }
 
-    private void RebuildLogicalWeights()
+    private void NotifyStepState()
     {
-        _logicalEdgeWeights.Clear();
-
-        foreach (var edge in Edges.Where(e => e.Weight.HasValue))
-        {
-            var key = GetUndirectedPairKey(edge.SourceId, edge.TargetId);
-
-            if (!_logicalEdgeWeights.ContainsKey(key))
-                _logicalEdgeWeights[key] = edge.Weight!.Value;
-        }
-    }
-
-    public string GetAdjacencyMatrixText() =>
-        AdjacencyMatrix.BuildText(GetVertices(), GetArcs(), IsDirectedGraph, IsWeightedGraph);
-
-    private List<GraphVertex> GetVertices() =>
-        Nodes.Select(n => new GraphVertex(n.Id, n.Label)).ToList();
-
-    private List<GraphArc> GetArcs() =>
-        Edges.Select(e => new GraphArc(e.Id, e.SourceId, e.TargetId, e.Label, e.Weight)).ToList();
-
-    private void ApplyCurrentDijkstraStep()
-    {
-        var step = CurrentDijkstraStep;
-        if (step is null)
-            return;
-
-        DijkstraStatus = step.Description;
-
-        foreach (var node in Nodes)
-        {
-            node.IsVisited = step.VisitedNodeIds.Contains(node.Id);
-            node.IsHighlighted = node.Id == step.CurrentNodeId || step.FinalPathNodeIds.Contains(node.Id);
-
-            node.DistanceLabel = step.Distances.TryGetValue(node.Id, out var distance) && distance != decimal.MaxValue
-                ? distance.ToString()
-                : "∞";
-        }
-
-        foreach (var edge in Edges)
-        {
-            edge.IsExamined = edge.Id == step.ExaminedEdgeId;
-            edge.IsPathEdge = step.FinalPathEdgeIds.Contains(edge.Id);
-            edge.IsHighlighted = edge.IsExamined || edge.IsPathEdge;
-        }
-
         OnPropertyChanged(nameof(CurrentDijkstraStep));
         OnPropertyChanged(nameof(CanGoToNextStep));
         OnPropertyChanged(nameof(CanGoToPreviousStep));
     }
+
+    #endregion
 }
 
 public class GraphKindOption

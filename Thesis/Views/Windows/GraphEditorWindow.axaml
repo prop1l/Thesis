@@ -1,10 +1,9 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:Thesis.ViewModels"
         xmlns:controls="clr-namespace:Thesis.Controls"
-        xmlns:model="clr-namespace:Thesis.Models"
         mc:Ignorable="d"
         d:DesignWidth="1200"
         d:DesignHeight="800"
@@ -188,6 +187,55 @@
 		<Style Selector="ScrollBar:horizontal">
 			<Setter Property="Height" Value="8"/>
 		</Style>
+
+		<!-- Вершины графа. Состояния взаимоисключающие (их считает NodeViewModel) -->
+		<Style Selector="Ellipse.node">
+			<Setter Property="Fill" Value="#F1F5F9"/>
+			<Setter Property="Stroke" Value="#CBD5E1"/>
+			<Setter Property="StrokeThickness" Value="1.5"/>
+		</Style>
+		<Style Selector="Ellipse.node.visited">
+			<Setter Property="Fill" Value="#DBEAFE"/>
+			<Setter Property="Stroke" Value="#60A5FA"/>
+			<Setter Property="StrokeThickness" Value="2"/>
+		</Style>
+		<Style Selector="Ellipse.node.path">
+			<Setter Property="Fill" Value="#DCFCE7"/>
+			<Setter Property="Stroke" Value="#22C55E"/>
+			<Setter Property="StrokeThickness" Value="2.5"/>
+		</Style>
+		<Style Selector="Ellipse.node.current">
+			<Setter Property="Fill" Value="#2563EB"/>
+			<Setter Property="Stroke" Value="#1D4ED8"/>
+			<Setter Property="StrokeThickness" Value="3"/>
+		</Style>
+
+		<Style Selector="TextBlock.node">
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="TextAlignment" Value="Center"/>
+			<Setter Property="Foreground" Value="#334155"/>
+		</Style>
+		<Style Selector="TextBlock.node.visited">
+			<Setter Property="Foreground" Value="#1E3A8A"/>
+		</Style>
+		<Style Selector="TextBlock.node.path">
+			<Setter Property="Foreground" Value="#14532D"/>
+		</Style>
+		<Style Selector="TextBlock.node.current">
+			<Setter Property="Foreground" Value="White"/>
+		</Style>
+
+		<!-- Подпись веса ребра -->
+		<Style Selector="Border.weight">
+			<Setter Property="Background" Value="White"/>
+			<Setter Property="Padding" Value="6,2"/>
+			<Setter Property="CornerRadius" Value="8"/>
+		</Style>
+		<Style Selector="Border.weight > TextBlock">
+			<Setter Property="FontWeight" Value="SemiBold"/>
+			<Setter Property="TextAlignment" Value="Center"/>
+			<Setter Property="Foreground" Value="Black"/>
+		</Style>
 	</Window.Styles>
 
 	<Grid Margin="12" ColumnDefinitions="*,400" ColumnSpacing="12">
@@ -303,16 +351,101 @@
                                   VerticalScrollBarVisibility="Auto">
 						<Border x:Name="CanvasContainer"
                                 Margin="16">
-							<Canvas x:Name="GraphCanvas"
-                                    Width="2000"
-                                    Height="2000"
-                                    Background="Transparent"
-                                    ClipToBounds="True">
-								<Canvas.RenderTransform>
+							<!-- Холст рисуется привязками к Nodes/Edges ViewModel-и.
+							     Слои: линии рёбер → вершины → стрелки и веса (как и раньше, поверх вершин).
+							     Слои не ловят мышь (IsHitTestVisible=False): клики получает сама панель,
+							     а попадание в вершину/ребро считает ViewModel. -->
+							<Panel x:Name="GraphCanvas"
+                                   Width="2000"
+                                   Height="2000"
+                                   Background="Transparent"
+                                   ClipToBounds="True">
+								<Panel.RenderTransform>
 									<ScaleTransform ScaleX="{Binding ZoomLevel}"
                                                     ScaleY="{Binding ZoomLevel}"/>
-								</Canvas.RenderTransform>
-							</Canvas>
+								</Panel.RenderTransform>
+
+								<!-- Временная линия при создании ребра (ПКМ по вершине) -->
+								<Line StartPoint="{Binding PendingEdgeStart}"
+                                      EndPoint="{Binding PendingEdgeEnd}"
+                                      IsVisible="{Binding IsCreatingEdge}"
+                                      Stroke="DarkOrange"
+                                      StrokeThickness="2"
+                                      StrokeDashArray="4,4"
+                                      IsHitTestVisible="False"/>
+
+								<!-- Слой 1: линии рёбер -->
+								<ItemsControl ItemsSource="{Binding Edges}" IsHitTestVisible="False">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="vm:EdgeViewModel">
+											<Line StartPoint="{Binding StartPoint}"
+                                                  EndPoint="{Binding EndPoint}"
+                                                  Stroke="{Binding Stroke}"
+                                                  StrokeThickness="{Binding StrokeThickness}"
+                                                  StrokeDashArray="{Binding StrokeDashArray}"/>
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+
+								<!-- Слой 2: вершины -->
+								<ItemsControl ItemsSource="{Binding Nodes}" IsHitTestVisible="False">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="vm:NodeViewModel">
+											<Canvas>
+												<Ellipse Classes="node"
+                                                         Classes.current="{Binding ShowCurrent}"
+                                                         Classes.path="{Binding ShowPath}"
+                                                         Classes.visited="{Binding ShowVisited}"
+                                                         Canvas.Left="{Binding X}"
+                                                         Canvas.Top="{Binding Y}"
+                                                         Width="{Binding Width}"
+                                                         Height="{Binding Height}"/>
+												<TextBlock Classes="node"
+                                                           Classes.current="{Binding ShowCurrent}"
+                                                           Classes.path="{Binding ShowPath}"
+                                                           Classes.visited="{Binding ShowVisited}"
+                                                           Canvas.Left="{Binding X}"
+                                                           Canvas.Top="{Binding Y}"
+                                                           Width="{Binding Width}"
+                                                           Height="{Binding Height}"
+                                                           LineHeight="{Binding LineHeight}"
+                                                           FontSize="{Binding FontSize}"
+                                                           Text="{Binding DisplayText}"/>
+											</Canvas>
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+
+								<!-- Слой 3: стрелки и подписи весов поверх вершин -->
+								<ItemsControl ItemsSource="{Binding Edges}" IsHitTestVisible="False">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="vm:EdgeViewModel">
+											<Canvas>
+												<Polyline Points="{Binding ArrowPoints}"
+                                                          Stroke="{Binding Stroke}"
+                                                          StrokeThickness="{Binding StrokeThickness}"
+                                                          IsVisible="{Binding $parent[Window].((vm:GraphEditorViewModel)DataContext).IsDirectedGraph}"/>
+												<Border Classes="weight"
+                                                        Canvas.Left="{Binding WeightLeft}"
+                                                        Canvas.Top="{Binding WeightTop}"
+                                                        IsVisible="{Binding $parent[Window].((vm:GraphEditorViewModel)DataContext).IsWeightedGraph}">
+													<TextBlock Text="{Binding WeightText}"
+                                                               FontSize="{Binding FontSize}"/>
+												</Border>
+											</Canvas>
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+							</Panel>
 						</Border>
 					</ScrollViewer>
 				</Border>
@@ -358,7 +491,7 @@
 									<TextBox Grid.Row="0" Grid.Column="1"
 											 Text="{Binding GraphName, UpdateSourceTrigger=PropertyChanged}"
 											 FontWeight="SemiBold"
-											 Watermark="Название графа"/>
+											 PlaceholderText="Название графа"/>
 
 									<TextBlock Grid.Row="1" Grid.Column="0"
 											   Classes="caption" Text="Вершин"/>
@@ -451,7 +584,7 @@
 									<TextBlock Grid.Row="1" Grid.Column="0" Classes="caption" Text="Название"/>
 									<TextBox Grid.Row="1" Grid.Column="1"
 											 Text="{Binding SelectedNode.Label, UpdateSourceTrigger=PropertyChanged}"
-											 Watermark="Название"/>
+											 PlaceholderText="Название"/>
 
 									<TextBlock Grid.Row="2" Grid.Column="0" Classes="caption" Text="X"/>
 									<Grid Grid.Row="2" Grid.Column="1"
@@ -516,7 +649,7 @@
 									<TextBlock Grid.Row="1" Grid.Column="0" Classes="caption" Text="Название"/>
 									<TextBox Grid.Row="1" Grid.Column="1"
 											 Text="{Binding SelectedEdge.Label, UpdateSourceTrigger=PropertyChanged}"
-											 Watermark="Название"/>
+											 PlaceholderText="Название"/>
 
 									<TextBlock Grid.Row="2" Grid.Column="0" Classes="caption" Text="Вес"/>
 									<NumericUpDown Grid.Row="2" Grid.Column="1"
@@ -591,7 +724,7 @@
 											  SelectedItem="{Binding DijkstraStartNode}"
 											  PlaceholderText="Выберите">
 										<ComboBox.ItemTemplate>
-											<DataTemplate x:DataType="model:Node">
+											<DataTemplate x:DataType="vm:NodeViewModel">
 												<TextBlock Text="{Binding Label}"/>
 											</DataTemplate>
 										</ComboBox.ItemTemplate>
@@ -604,7 +737,7 @@
 											  SelectedItem="{Binding DijkstraEndNode}"
 											  PlaceholderText="Выберите">
 										<ComboBox.ItemTemplate>
-											<DataTemplate x:DataType="model:Node">
+											<DataTemplate x:DataType="vm:NodeViewModel">
 												<TextBlock Text="{Binding Label}"/>
 											</DataTemplate>
 										</ComboBox.ItemTemplate>
@@ -705,7 +838,7 @@
 									</Button>
 								</Grid>
 
-								<controls:PerformanceChart x:Name="Chart"
+								<controls:PerformanceChart Data="{Binding ChartData}"
 														   Height="240"/>
 
 								<TextBlock Text="Сложность O((V+E)·log V)"

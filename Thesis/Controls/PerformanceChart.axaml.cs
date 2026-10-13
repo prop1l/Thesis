@@ -1,3 +1,4 @@
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using SkiaSharp;
@@ -10,29 +11,41 @@ namespace Thesis.Controls;
 
 public partial class PerformanceChart : UserControl
 {
-    private List<PerformancePoint> _data = new();
+    // Привязываемое свойство: окно задаёт Data="{Binding ChartData}" вместо вызова SetData из code-behind
+    public static readonly StyledProperty<IReadOnlyList<PerformancePoint>?> DataProperty =
+        AvaloniaProperty.Register<PerformanceChart, IReadOnlyList<PerformancePoint>?>(nameof(Data));
+
+    public IReadOnlyList<PerformancePoint>? Data
+    {
+        get => GetValue(DataProperty);
+        set => SetValue(DataProperty, value);
+    }
+
+    private IReadOnlyList<PerformancePoint> _data = [];
 
     public PerformanceChart()
     {
         InitializeComponent();
-
-        this.PropertyChanged += (s, e) =>
-        {
-            if (e.Property == BoundsProperty && _data.Any())
-                DrawChart();
-        };
     }
 
-    // ПУБЛИЧНЫЙ МЕТОД ДЛЯ УСТАНОВКИ ДАННЫХ
-    public void SetData(List<PerformancePoint> data)
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
-        _data = data ?? new List<PerformancePoint>();
-        DrawChart();
+        base.OnPropertyChanged(change);
+
+        if (change.Property == DataProperty)
+        {
+            _data = Data ?? [];
+            DrawChart();
+        }
+        else if (change.Property == BoundsProperty && _data.Any())
+        {
+            DrawChart();
+        }
     }
 
     private void DrawChart()
     {
-        if (_data == null || !_data.Any())
+        if (!_data.Any())
         {
             NoDataText.IsVisible = true;
             ChartImage.Source = null;

@@ -1,5 +1,5 @@
+using System;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Thesis.ViewModels;
 
 namespace Thesis.Views;
@@ -9,18 +9,20 @@ public partial class RenameGraphDialog : Window
     public RenameGraphDialog()
     {
         InitializeComponent();
-    }
 
-    private void Save_Click(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is RenameGraphDialogViewModel vm && vm.CanSave)
+        // Сразу ставим курсор в поле и выделяем старое имя — его обычно заменяют целиком
+        Opened += (_, _) =>
         {
-            Close(vm.GraphName);
-        }
+            NameBox.Focus();
+            NameBox.SelectAll();
+        };
     }
 
-    private void Cancel_Click(object? sender, RoutedEventArgs e)
+    protected override void OnDataContextChanged(EventArgs e)
     {
-        Close(null);
+        base.OnDataContextChanged(e);
+
+        if (DataContext is RenameGraphDialogViewModel vm)
+            vm.CloseRequested += Close;
     }
 }

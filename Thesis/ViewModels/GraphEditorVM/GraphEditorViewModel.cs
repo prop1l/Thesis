@@ -54,13 +54,10 @@ public partial class GraphEditorViewModel : ObservableObject
     public ObservableCollection<EdgeViewModel> Edges { get; } = new();
     public ObservableCollection<DijkstraStep> DijkstraSteps { get; } = new();
 
-    public ObservableCollection<GraphKindOption> GraphKindOptions { get; } = new()
-    {
-        new GraphKindOption { Value = GraphKind.UndirectedUnweighted, Title = "Неориентированный невзвешенный" },
-        new GraphKindOption { Value = GraphKind.UndirectedWeighted, Title = "Неориентированный взвешенный" },
-        new GraphKindOption { Value = GraphKind.DirectedUnweighted, Title = "Ориентированный невзвешенный" },
-        new GraphKindOption { Value = GraphKind.DirectedWeighted, Title = "Ориентированный взвешенный" }
-    };
+    public ObservableCollection<GraphKindOption> GraphKindOptions { get; } = new(
+        Enum.GetValues<GraphKind>().Select(kind => new GraphKindOption { Value = kind, Title = kind.ToTitle() }));
+
+    public string GraphKindTitle => GraphKind.ToTitle();
 
     public bool IsDirectedGraph =>
         GraphKind is GraphKind.DirectedUnweighted or GraphKind.DirectedWeighted;
@@ -69,6 +66,7 @@ public partial class GraphEditorViewModel : ObservableObject
         GraphKind is GraphKind.DirectedWeighted or GraphKind.UndirectedWeighted;
 
     public int NodesCount => Nodes.Count;
+    public bool IsGraphEmpty => Nodes.Count == 0;
     public int EdgesCount => Edges.Count;
     public bool IsNodeSelected => SelectedNode is not null;
     public bool IsEdgeSelected => SelectedEdge is not null;
@@ -83,6 +81,15 @@ public partial class GraphEditorViewModel : ObservableObject
         get => _zoomLevel;
         set => SetProperty(ref _zoomLevel, Math.Clamp(value, 0.5, 1.5));
     }
+
+    /// <summary>«Шаг 3 из 17» — чтобы было понятно, где мы в ходе алгоритма.</summary>
+    public string StepCounterText => CurrentDijkstraStep is null
+        ? string.Empty
+        : $"Шаг {CurrentDijkstraStepIndex + 1} из {DijkstraSteps.Count}";
+
+    public double StepProgress => DijkstraSteps.Count == 0
+        ? 0
+        : (CurrentDijkstraStepIndex + 1) * 100.0 / DijkstraSteps.Count;
 
     public DijkstraStep? CurrentDijkstraStep =>
         CurrentDijkstraStepIndex >= 0 && CurrentDijkstraStepIndex < DijkstraSteps.Count
@@ -188,6 +195,12 @@ public partial class GraphEditorViewModel : ObservableObject
     #endregion
 
     #region Editing
+
+    /// <summary>Двойной клик по холсту: вершина появляется центром в точке клика.</summary>
+    public void AddNodeAtCenter(Point center)
+    {
+        AddNodeAt(center.X - GraphStyle.Node.Width / 2, center.Y - GraphStyle.Node.Height / 2);
+    }
 
     [RelayCommand]
     private void AddNode()
@@ -721,6 +734,8 @@ public partial class GraphEditorViewModel : ObservableObject
 
         OnPropertyChanged(nameof(IsDirectedGraph));
         OnPropertyChanged(nameof(IsWeightedGraph));
+        OnPropertyChanged(nameof(GraphKindTitle));
+        UpdateAdjacencyMatrix();
         SaveGraph();
     }
 
@@ -764,6 +779,7 @@ public partial class GraphEditorViewModel : ObservableObject
     private void NotifyState()
     {
         OnPropertyChanged(nameof(NodesCount));
+        OnPropertyChanged(nameof(IsGraphEmpty));
         OnPropertyChanged(nameof(EdgesCount));
         OnPropertyChanged(nameof(CanRunDijkstra));
         NotifySelection();
@@ -781,6 +797,8 @@ public partial class GraphEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(CurrentDijkstraStep));
         OnPropertyChanged(nameof(CanGoToNextStep));
         OnPropertyChanged(nameof(CanGoToPreviousStep));
+        OnPropertyChanged(nameof(StepCounterText));
+        OnPropertyChanged(nameof(StepProgress));
     }
 
     #endregion

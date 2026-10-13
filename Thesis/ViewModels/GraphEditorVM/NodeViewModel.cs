@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -16,7 +16,6 @@ public partial class NodeViewModel : ObservableObject
     private readonly NodeStyle _style;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowCurrent), nameof(ShowPath), nameof(ShowVisited))]
     private bool isSelected;
 
     [ObservableProperty]
@@ -78,16 +77,15 @@ public partial class NodeViewModel : ObservableObject
 
     public double Width => _style.Width;
     public double Height => _style.Height;
-    public double LineHeight => _style.Height / 2;
     public Point Center => new(X + Width / 2, Y + Height / 2);
 
     public bool IsHighlighted => IsCurrent || IsOnPath;
 
-    // Взаимоисключающие визуальные состояния — к ним привязаны классы стилей в XAML.
-    // Выделенная вершина рисуется обычным стилем, как и раньше.
-    public bool ShowCurrent => !IsSelected && IsCurrent;
-    public bool ShowPath => !IsSelected && !IsCurrent && IsOnPath;
-    public bool ShowVisited => !IsSelected && !IsCurrent && !IsOnPath && IsVisited;
+    // Взаимоисключающие состояния алгоритма — к ним привязаны классы стилей в XAML.
+    // Выделение (IsSelected) рисуется отдельно — акцентной обводкой поверх любого состояния.
+    public bool ShowCurrent => IsCurrent;
+    public bool ShowPath => !IsCurrent && IsOnPath;
+    public bool ShowVisited => !IsCurrent && !IsOnPath && IsVisited;
 
     public string DisplayText => string.IsNullOrWhiteSpace(DistanceLabel)
         ? Label
@@ -121,7 +119,6 @@ public partial class NodeViewModel : ObservableObject
                 break;
             case nameof(NodeStyle.Height):
                 OnPropertyChanged(nameof(Height));
-                OnPropertyChanged(nameof(LineHeight));
                 OnPropertyChanged(nameof(Center));
                 break;
             case nameof(NodeStyle.FontSize):

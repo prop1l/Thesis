@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
 using Thesis.Models.Graph;
@@ -15,24 +16,23 @@ public partial class WelcomeViewModel : ObservableObject
     private readonly IWindowService? _windowService;
     private readonly IThemeService? _themeService;
 
-    public ObservableCollection<GraphItem> GraphItems { get; } = new();
+    public ObservableCollection<GraphCardViewModel> GraphItems { get; } = new();
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AddGraphCommand))]
+    [NotifyPropertyChangedFor(nameof(NameError), nameof(HasNameError))]
     private string newGraphName = string.Empty;
 
-    public bool IsDarkTheme
-    {
-        get => _themeService?.IsDarkTheme ?? false;
-        set
-        {
-            if (_themeService != null)
-                _themeService.IsDarkTheme = value;
-        }
-    }
+    public bool IsDark => _themeService?.IsDark ?? false;
 
-    public string AddNewGraphTitle => "Создать новый граф";
-    public string AddNewGraphSubtitle => "Введите имя графа и добавьте его в систему.";
+    public bool IsEmpty => GraphItems.Count == 0;
+
+    public string GraphCountText =>
+        $"{GraphItems.Count} {GraphKindText.Plural(GraphItems.Count, "граф", "графа", "графов")}";
+
+    /// <summary>Подсказка под полем ввода, если имя занято.</summary>
+    public string? NameError => IsNameTaken(NewGraphName) ? "Граф с таким названием уже есть" : null;
+    public bool HasNameError => NameError is not null;
 
     public WelcomeViewModel(
         IGraphRepository repository,
@@ -43,14 +43,15 @@ public partial class WelcomeViewModel : ObservableObject
         _windowService = windowService;
         _themeService = themeService;
 
+        GraphItems.CollectionChanged += OnGraphItemsChanged;
         LoadGraphs();
 
         if (_themeService != null)
         {
             _themeService.PropertyChanged += (_, e) =>
             {
-                if (e.PropertyName == nameof(IThemeService.IsDarkTheme))
-                    OnPropertyChanged(nameof(IsDarkTheme));
+                if (e.PropertyName == nameof(IThemeService.IsDark))
+                    OnPropertyChanged(nameof(IsDark));
             };
         }
     }
@@ -63,47 +64,68 @@ public partial class WelcomeViewModel : ObservableObject
             return;
 
         var trimmedName = NewGraphName.Trim();
+        var data = _repository.CreateEmptyGraph(trimmedName);
 
-        if (GraphItems.Any(x => string.Equals(x.Name, trimmedName, StringComparison.OrdinalIgnoreCase)))
-            return;
+        var card = new GraphCardViewModel(new GraphItem { Name = trimmedName });
+        card.Update(data);
+        GraphItems.Add(card);
 
-        GraphItems.Add(new GraphItem { Name = trimmedName });
-        _repository.SaveGraphList(GraphItems);
-        _repository.SaveGraph(trimmedName, _repository.CreateEmptyGraph(trimmedName));
+        SaveGraphList();
+        _repository.SaveGraph(trimmedName, data);
 
         NewGraphName = string.Empty;
     }
 
     private bool CanAddGraph()
-        => !string.IsNullOrWhiteSpace(NewGraphName);
+        => !string.IsNullOrWhiteSpace(NewGraphName) && !IsNameTaken(NewGraphName);
 
     [RelayCommand]
-    private void DeleteGraph(GraphItem? item)
+    private async Task DeleteGraphAsync(GraphCardViewModel? card)
     {
-        if (item is null || !GraphItems.Remove(item))
+        if (card is null)
             return;
 
-        _repository.SaveGraphList(GraphItems);
-        _repository.DeleteGraph(item.Name);
+        if (_windowService is not null)
+        {
+            var confirmed = await _windowService.ConfirmAsync(
+                "Удалить граф?",
+                $"Граф «{card.Name}» будет удалён без возможности восстановления.",
+                "Удалить");
+
+            if (!confirmed)
+                return;
+        }
+
+        if (!GraphItems.Remove(card))
+            return;
+
+        SaveGraphList();
+        _repository.DeleteGraph(card.Name);
     }
 
     [RelayCommand]
-    private async Task OpenGraphAsync(GraphItem? item)
+    private async Task OpenGraphAsync(GraphCardViewModel? card)
     {
-        if (item is not null && _windowService is not null)
-            await _windowService.ShowGraphEditorAsync(item.Name);
+        if (card is null || _windowService is null)
+            return;
+
+        await _windowService.ShowGraphEditorAsync(card.Name);
+
+        // После закрытия редактора обновляем сводку на карточке
+        card.Update(_repository.LoadGraph(card.Name));
     }
 
     [RelayCommand]
-    private async Task RenameGraphAsync(GraphItem? item)
+    private async Task RenameGraphAsync(GraphCardViewModel? card)
     {
-        if (item is null || _windowService is null)
+        if (card is null || _windowService is null)
             return;
 
-        var newName = await _windowService.ShowRenameGraphDialogAsync(item.Name);
+        var takenNames = GraphItems.Where(x => !ReferenceEquals(x, card)).Select(x => x.Name).ToList();
+        var newName = await _windowService.ShowRenameGraphDialogAsync(card.Name, takenNames);
 
         if (!string.IsNullOrWhiteSpace(newName))
-            RenameGraph(item, newName);
+            RenameGraph(card, newName);
     }
 
     [RelayCommand]
@@ -112,7 +134,13 @@ public partial class WelcomeViewModel : ObservableObject
         _windowService?.ShowSettings();
     }
 
-    public bool RenameGraph(GraphItem item, string newName)
+    [RelayCommand]
+    private void ToggleTheme()
+    {
+        _themeService?.ToggleLightDark();
+    }
+
+    public bool RenameGraph(GraphCardViewModel card, string newName)
     {
         if (string.IsNullOrWhiteSpace(newName))
             return false;
@@ -120,19 +148,19 @@ public partial class WelcomeViewModel : ObservableObject
         var trimmedName = newName.Trim();
 
         if (GraphItems.Any(x =>
-                !ReferenceEquals(x, item) &&
+                !ReferenceEquals(x, card) &&
                 string.Equals(x.Name, trimmedName, StringComparison.OrdinalIgnoreCase)))
             return false;
 
-        var oldName = item.Name;
+        var oldName = card.Name;
 
         try
         {
             _repository.RenameGraph(oldName, trimmedName);
 
-            item.Name = trimmedName;
-            _repository.SaveGraphList(GraphItems);
-            LoadGraphs();
+            card.Name = trimmedName;
+            SaveGraphList();
+            card.Update(_repository.LoadGraph(trimmedName));
             return true;
         }
         catch (Exception ex)
@@ -142,11 +170,30 @@ public partial class WelcomeViewModel : ObservableObject
         }
     }
 
+    private bool IsNameTaken(string name) =>
+        !string.IsNullOrWhiteSpace(name) &&
+        GraphItems.Any(x => string.Equals(x.Name, name.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private void SaveGraphList() => _repository.SaveGraphList(GraphItems.Select(x => x.Item));
+
     private void LoadGraphs()
     {
         GraphItems.Clear();
 
         foreach (var item in _repository.GetGraphList())
-            GraphItems.Add(item);
+        {
+            var card = new GraphCardViewModel(item);
+            card.Update(_repository.LoadGraph(item.Name));
+            GraphItems.Add(card);
+        }
+    }
+
+    private void OnGraphItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(GraphCountText));
+        OnPropertyChanged(nameof(NameError));
+        OnPropertyChanged(nameof(HasNameError));
+        AddGraphCommand.NotifyCanExecuteChanged();
     }
 }

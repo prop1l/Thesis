@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using Avalonia.Media;
+using Thesis.Models;
 
 namespace Thesis.Services;
 
@@ -9,6 +11,17 @@ namespace Thesis.Services;
 /// </summary>
 public interface IThemeService : INotifyPropertyChanged
 {
-    bool IsDarkTheme { get; set; }
+    /// <summary>Выбранный режим: системная, светлая или тёмная тема.</summary>
+    ThemeMode Mode { get; set; }
+
+    /// <summary>Базовый акцентный цвет. Для тёмной темы автоматически берётся более светлый оттенок.</summary>
     Color AccentColor { get; set; }
+
+    /// <summary>Фактически активна тёмная тема (с учётом системной).</summary>
+    bool IsDark { get; }
+
+    IReadOnlyList<Color> AccentPresets { get; }
+
+    /// <summary>Быстрое переключение светлая ↔ тёмная (кнопка в шапке).</summary>
+    void ToggleLightDark();
 }

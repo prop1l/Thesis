@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Thesis.Services;
@@ -12,5 +13,8 @@ public interface IWindowService
     Task ShowGraphEditorAsync(string graphName);
 
     /// <summary>Возвращает новое имя или null, если пользователь нажал «Отмена».</summary>
-    Task<string?> ShowRenameGraphDialogAsync(string currentName);
+    Task<string?> ShowRenameGraphDialogAsync(string currentName, IReadOnlyCollection<string> takenNames);
+
+    /// <summary>Диалог подтверждения необратимого действия.</summary>
+    Task<bool> ConfirmAsync(string title, string message, string confirmText);
 }

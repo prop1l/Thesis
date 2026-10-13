@@ -1,12 +1,8 @@
 ﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Media;
-using Avalonia.Styling;
-using Avalonia.Themes.Fluent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
 using Thesis.Algorithms;
 using Thesis.Services;
 using Thesis.ViewModels;
@@ -16,27 +12,11 @@ namespace Thesis
 {
     public partial class App : Application
     {
-        public static ColorPaletteResources LightPalette { get; } = new()
-        {
-            Accent = Color.Parse("#0063B1")
-        };
-
-        public static ColorPaletteResources DarkPalette { get; } = new()
-        {
-            Accent = Color.Parse("#4CC2FF")
-        };
-
         public IHost? Host { get; private set; }
 
         public override void Initialize()
         {
             AvaloniaXamlLoader.Load(this);
-
-            if (Styles[0] is FluentTheme fluentTheme)
-            {
-                fluentTheme.Palettes[ThemeVariant.Light] = LightPalette;
-                fluentTheme.Palettes[ThemeVariant.Dark] = DarkPalette;
-            }
         }
 
         public override void OnFrameworkInitializationCompleted()
@@ -47,6 +27,7 @@ namespace Thesis
                     .ConfigureServices((context, services) =>
                     {
                         //Services
+                        services.AddSingleton<ISettingsStore>(_ => new JsonSettingsStore(JsonGraphRepository.DefaultFolder));
                         services.AddSingleton<IThemeService, ThemeService>();
                         services.AddSingleton<IGraphRepository>(_ => new JsonGraphRepository(JsonGraphRepository.DefaultFolder));
                         services.AddSingleton<IWindowService, WindowService>();
@@ -66,6 +47,9 @@ namespace Thesis
                     .Build();
 
                 Host.Start();
+
+                // Тему применяем до создания окон, чтобы не было «вспышки» светлой темы
+                Host.Services.GetRequiredService<IThemeService>();
                 desktop.Exit += (_, _) => Host.Dispose();
 
                 var welcomeViewModel = Host.Services.GetRequiredService<WelcomeViewModel>();

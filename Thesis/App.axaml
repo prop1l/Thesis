@@ -5,28 +5,21 @@
 
     <Application.Resources>
         <ResourceDictionary>
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#FF202124"/>
-                    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#FF2B2D31"/>
-                    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#FF25282C"/>
-                </ResourceDictionary>
-
-                <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="SystemControlBackgroundBaseHighBrush" Color="#FFF6F6F6"/>
-                    <SolidColorBrush x:Key="SystemControlBackgroundChromeMediumLowBrush" Color="#FFEAEAEA"/>
-                    <SolidColorBrush x:Key="SystemControlBackgroundAltHighBrush" Color="#FFFFFFFF"/>
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="/Themes/Tokens.axaml"/>
+                <ResourceInclude Source="/Themes/Icons.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
-  
+
     <Application.Styles>
+        <!-- Акцент по умолчанию; при запуске ThemeService заменяет его сохранённым -->
         <FluentTheme>
             <FluentTheme.Palettes>
                 <ColorPaletteResources x:Key="Light" Accent="#4F46E5"/>
-                <ColorPaletteResources x:Key="Dark" Accent="#7C83FF"/>
+                <ColorPaletteResources x:Key="Dark" Accent="#9C97FF"/>
             </FluentTheme.Palettes>
         </FluentTheme>
+        <StyleInclude Source="/Themes/Styles.axaml"/>
     </Application.Styles>
 </Application>

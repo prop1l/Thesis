@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -11,14 +13,30 @@ namespace Thesis.Services;
 
 public class WindowService(IServiceProvider services) : IWindowService
 {
-    private static Window? MainWindow =>
-        (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+    private static IClassicDesktopStyleApplicationLifetime? Desktop =>
+        Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+
+    // Владелец диалога — активное окно (например, редактор), иначе главное
+    private static Window? Owner =>
+        Desktop?.Windows.FirstOrDefault(w => w.IsActive) ?? Desktop?.MainWindow;
 
     public void ShowSettings()
     {
+        // Окно настроек одно: повторный клик просто выводит его на передний план
+        var existing = Desktop?.Windows.OfType<SettingWindow>().FirstOrDefault();
+        if (existing is not null)
+        {
+            existing.Activate();
+            return;
+        }
+
         var window = services.GetRequiredService<SettingWindow>();
         window.DataContext = services.GetRequiredService<SettingWindowViewModel>();
-        window.Show();
+
+        if (Owner is { } owner)
+            window.Show(owner);
+        else
+            window.Show();
     }
 
     public async Task ShowGraphEditorAsync(string graphName)
@@ -29,21 +47,31 @@ public class WindowService(IServiceProvider services) : IWindowService
         var window = services.GetRequiredService<GraphEditorWindow>();
         window.DataContext = viewModel;
 
-        if (MainWindow is { } owner)
+        if (Owner is { } owner)
             await window.ShowDialog(owner);
         else
             window.Show();
     }
 
-    public async Task<string?> ShowRenameGraphDialogAsync(string currentName)
+    public async Task<string?> ShowRenameGraphDialogAsync(string currentName, IReadOnlyCollection<string> takenNames)
     {
         var dialog = new RenameGraphDialog
         {
-            DataContext = new RenameGraphDialogViewModel { GraphName = currentName }
+            DataContext = new RenameGraphDialogViewModel(takenNames) { GraphName = currentName }
         };
 
-        return MainWindow is { } owner
+        return Owner is { } owner
             ? await dialog.ShowDialog<string?>(owner)
             : null;
+    }
+
+    public async Task<bool> ConfirmAsync(string title, string message, string confirmText)
+    {
+        var dialog = new ConfirmDialog
+        {
+            DataContext = new ConfirmDialogViewModel(title, message, confirmText)
+        };
+
+        return Owner is { } owner && await dialog.ShowDialog<bool>(owner);
     }
 }

@@ -1,47 +1,41 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:Thesis.ViewModels"
-        mc:Ignorable="d"
+        xmlns:controls="using:Thesis.Controls"
         x:Class="Thesis.Views.RenameGraphDialog"
         x:DataType="vm:RenameGraphDialogViewModel"
         Title="Переименовать граф"
-        Width="460"
-        Height="240"
+        Width="440"
+        SizeToContent="Height"
         CanResize="False"
+        ShowInTaskbar="False"
         WindowStartupLocation="CenterOwner">
 
-    <Border Padding="24"
-            Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
-        <StackPanel Spacing="18">
-            <StackPanel Spacing="6">
-                <TextBlock Text="Переименовать граф"
-                           FontSize="26"
-                           FontWeight="SemiBold"
-                           Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-                <TextBlock Text="Введите новое название графа"
-                           FontSize="15"
-                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
-            </StackPanel>
-
-            <TextBox Text="{Binding GraphName, UpdateSourceTrigger=PropertyChanged}"
-                     PlaceholderText="Название графа"
-                     Height="46"
-                     FontSize="18" />
-
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Right"
-                        Spacing="12">
-                <Button Content="Отмена"
-                        Width="120"
-                        Click="Cancel_Click" />
-
-                <Button Content="Сохранить"
-                        Width="120"
-                        IsEnabled="{Binding CanSave}"
-                        Click="Save_Click" />
-            </StackPanel>
+    <StackPanel Margin="24" Spacing="20">
+        <StackPanel Spacing="4">
+            <TextBlock Classes="h2" Text="Переименовать граф"/>
+            <TextBlock Classes="caption" Text="Название показывается на главном экране и в заголовке редактора."/>
         </StackPanel>
-    </Border>
+
+        <StackPanel Spacing="6">
+            <TextBox x:Name="NameBox"
+                     Text="{Binding GraphName, UpdateSourceTrigger=PropertyChanged}"
+                     PlaceholderText="Название графа">
+                <TextBox.KeyBindings>
+                    <KeyBinding Gesture="Enter" Command="{Binding SaveCommand}"/>
+                </TextBox.KeyBindings>
+            </TextBox>
+            <TextBlock Classes="caption"
+                       Foreground="{DynamicResource DangerBrush}"
+                       Text="{Binding ErrorText}"
+                       IsVisible="{Binding HasError}"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="secondary" Content="Отмена" MinWidth="100"
+                    Command="{Binding CancelCommand}" HotKey="Escape"/>
+            <Button Classes="accent" Content="Сохранить" MinWidth="100"
+                    Command="{Binding SaveCommand}"/>
+        </StackPanel>
+    </StackPanel>
 </Window>

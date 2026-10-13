@@ -1,6 +1,5 @@
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Collections;
-using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System;
 using System.Collections.Generic;
@@ -22,18 +21,18 @@ public partial class EdgeViewModel : ObservableObject
     private readonly GraphStyle _graphStyle;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Stroke), nameof(StrokeThickness))]
+    [NotifyPropertyChangedFor(nameof(ShowPath), nameof(ShowExamined), nameof(ShowSelected), nameof(StrokeThickness))]
     private bool isExamined;
 
     [ObservableProperty]
     private bool isHighlighted;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Stroke), nameof(StrokeThickness))]
+    [NotifyPropertyChangedFor(nameof(ShowPath), nameof(ShowExamined), nameof(ShowSelected), nameof(StrokeThickness))]
     private bool isPathEdge;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Stroke), nameof(StrokeThickness))]
+    [NotifyPropertyChangedFor(nameof(ShowPath), nameof(ShowExamined), nameof(ShowSelected), nameof(StrokeThickness))]
     private bool isSelected;
 
     public EdgeViewModel(Edge edge, NodeViewModel source, NodeViewModel target, GraphStyle graphStyle)
@@ -106,11 +105,11 @@ public partial class EdgeViewModel : ObservableObject
 
     #region Appearance
 
-    public IBrush Stroke =>
-        IsPathEdge ? Brushes.SeaGreen
-        : IsExamined ? Brushes.Orange
-        : IsSelected ? Brushes.DodgerBlue
-        : BrushHelper.CreateBrush(_graphStyle.Edge.Stroke);
+    // Цвет линии задают стили по классам (path / examined / selected), чтобы он следовал теме.
+    // Взаимоисключающие флаги: приоритет путь → просматриваемое → выделенное.
+    public bool ShowPath => IsPathEdge;
+    public bool ShowExamined => !IsPathEdge && IsExamined;
+    public bool ShowSelected => !IsPathEdge && !IsExamined && IsSelected;
 
     public double StrokeThickness =>
         _graphStyle.Edge.StrokeThickness +
@@ -142,9 +141,6 @@ public partial class EdgeViewModel : ObservableObject
     {
         switch (e.PropertyName)
         {
-            case nameof(EdgeStyle.Stroke):
-                OnPropertyChanged(nameof(Stroke));
-                break;
             case nameof(EdgeStyle.StrokeThickness):
                 OnPropertyChanged(nameof(StrokeThickness));
                 break;

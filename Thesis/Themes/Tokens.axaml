@@ -1,0 +1,145 @@
+﻿<!--
+    Семантические цвета приложения. Во всей разметке используются только эти ключи
+    (через DynamicResource), поэтому при смене темы перекрашивается всё — включая холст графа и график.
+    Акцентный цвет берётся из палитры FluentTheme (его меняет ThemeService).
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.ThemeDictionaries>
+
+        <!-- ===================== СВЕТЛАЯ ===================== -->
+        <ResourceDictionary x:Key="Light">
+            <!-- Поверхности -->
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F4F5F7"/>
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#F8F9FB"/>
+            <SolidColorBrush x:Key="SurfaceSunkenBrush" Color="#F0F1F4"/>
+            <SolidColorBrush x:Key="BorderSubtleBrush" Color="#E4E6EB"/>
+            <SolidColorBrush x:Key="BorderStrongBrush" Color="#CDD1D9"/>
+
+            <!-- Текст -->
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1A1D23"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5B616E"/>
+            <SolidColorBrush x:Key="TextMutedBrush" Color="#8A909C"/>
+
+            <!-- Статусы -->
+            <SolidColorBrush x:Key="DangerBrush" Color="#D93838"/>
+            <SolidColorBrush x:Key="DangerSoftBrush" Color="#FDECEC"/>
+            <SolidColorBrush x:Key="SuccessBrush" Color="#1F9D55"/>
+            <SolidColorBrush x:Key="WarningBrush" Color="#D97706"/>
+
+            <!-- Холст графа -->
+            <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#FAFBFC"/>
+            <SolidColorBrush x:Key="CanvasDotBrush" Color="#D9DCE2"/>
+            <!-- Фон холста: точечная сетка 24×24 -->
+            <DrawingBrush x:Key="CanvasGridBrush" TileMode="Tile" DestinationRect="0,0,24,24" Stretch="None">
+                <DrawingBrush.Drawing>
+                    <DrawingGroup>
+                        <GeometryDrawing Brush="#FAFBFC" Geometry="M0,0 H24 V24 H0 Z"/>
+                        <GeometryDrawing Brush="#D3D7DE">
+                            <GeometryDrawing.Geometry>
+                                <EllipseGeometry Center="12,12" RadiusX="1.1" RadiusY="1.1"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                    </DrawingGroup>
+                </DrawingBrush.Drawing>
+            </DrawingBrush>
+
+            <SolidColorBrush x:Key="NodeFillBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="NodeStrokeBrush" Color="#B8BEC9"/>
+            <SolidColorBrush x:Key="NodeTextBrush" Color="#1A1D23"/>
+            <SolidColorBrush x:Key="NodeVisitedFillBrush" Color="#E8EEFF"/>
+            <SolidColorBrush x:Key="NodeVisitedStrokeBrush" Color="#7C93E8"/>
+            <SolidColorBrush x:Key="NodeVisitedTextBrush" Color="#25357A"/>
+            <SolidColorBrush x:Key="NodeCurrentFillBrush" Color="#F59E0B"/>
+            <SolidColorBrush x:Key="NodeCurrentStrokeBrush" Color="#B45309"/>
+            <SolidColorBrush x:Key="NodeCurrentTextBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="NodePathFillBrush" Color="#DCF5E6"/>
+            <SolidColorBrush x:Key="NodePathStrokeBrush" Color="#1F9D55"/>
+            <SolidColorBrush x:Key="NodePathTextBrush" Color="#0F5132"/>
+
+            <SolidColorBrush x:Key="EdgeStrokeBrush" Color="#9AA1AE"/>
+            <SolidColorBrush x:Key="EdgeExaminedBrush" Color="#F59E0B"/>
+            <SolidColorBrush x:Key="EdgePathBrush" Color="#1F9D55"/>
+            <SolidColorBrush x:Key="WeightBackgroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="WeightBorderBrush" Color="#D9DCE2"/>
+            <SolidColorBrush x:Key="WeightTextBrush" Color="#1A1D23"/>
+
+            <!-- График -->
+            <SolidColorBrush x:Key="ChartGridBrush" Color="#E9EBEF"/>
+            <SolidColorBrush x:Key="ChartSeries1Brush" Color="#3B82F6"/>
+            <SolidColorBrush x:Key="ChartSeries2Brush" Color="#EF4444"/>
+            <SolidColorBrush x:Key="ChartSeries3Brush" Color="#10B981"/>
+
+            <BoxShadows x:Key="CardShadow">0 1 3 0 #14000000</BoxShadows>
+            <BoxShadows x:Key="CardHoverShadow">0 6 18 0 #1F000000</BoxShadows>
+        </ResourceDictionary>
+
+        <!-- ===================== ТЁМНАЯ ===================== -->
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="AppBackgroundBrush" Color="#121316"/>
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#1B1D22"/>
+            <SolidColorBrush x:Key="SurfaceHoverBrush" Color="#22252B"/>
+            <SolidColorBrush x:Key="SurfaceSunkenBrush" Color="#16181C"/>
+            <SolidColorBrush x:Key="BorderSubtleBrush" Color="#2A2D34"/>
+            <SolidColorBrush x:Key="BorderStrongBrush" Color="#3A3E47"/>
+
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#ECEDF0"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A3A8B3"/>
+            <SolidColorBrush x:Key="TextMutedBrush" Color="#737985"/>
+
+            <SolidColorBrush x:Key="DangerBrush" Color="#F87171"/>
+            <SolidColorBrush x:Key="DangerSoftBrush" Color="#3A1F22"/>
+            <SolidColorBrush x:Key="SuccessBrush" Color="#4ADE80"/>
+            <SolidColorBrush x:Key="WarningBrush" Color="#FBBF24"/>
+
+            <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#15171B"/>
+            <SolidColorBrush x:Key="CanvasDotBrush" Color="#2C3038"/>
+            <!-- Фон холста: точечная сетка 24×24 -->
+            <DrawingBrush x:Key="CanvasGridBrush" TileMode="Tile" DestinationRect="0,0,24,24" Stretch="None">
+                <DrawingBrush.Drawing>
+                    <DrawingGroup>
+                        <GeometryDrawing Brush="#15171B" Geometry="M0,0 H24 V24 H0 Z"/>
+                        <GeometryDrawing Brush="#2E323A">
+                            <GeometryDrawing.Geometry>
+                                <EllipseGeometry Center="12,12" RadiusX="1.1" RadiusY="1.1"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                    </DrawingGroup>
+                </DrawingBrush.Drawing>
+            </DrawingBrush>
+
+            <SolidColorBrush x:Key="NodeFillBrush" Color="#23262D"/>
+            <SolidColorBrush x:Key="NodeStrokeBrush" Color="#4A4F5A"/>
+            <SolidColorBrush x:Key="NodeTextBrush" Color="#ECEDF0"/>
+            <SolidColorBrush x:Key="NodeVisitedFillBrush" Color="#1E2A4D"/>
+            <SolidColorBrush x:Key="NodeVisitedStrokeBrush" Color="#6F8BEA"/>
+            <SolidColorBrush x:Key="NodeVisitedTextBrush" Color="#C9D5FF"/>
+            <SolidColorBrush x:Key="NodeCurrentFillBrush" Color="#F59E0B"/>
+            <SolidColorBrush x:Key="NodeCurrentStrokeBrush" Color="#FCD34D"/>
+            <SolidColorBrush x:Key="NodeCurrentTextBrush" Color="#1A1D23"/>
+            <SolidColorBrush x:Key="NodePathFillBrush" Color="#163826"/>
+            <SolidColorBrush x:Key="NodePathStrokeBrush" Color="#4ADE80"/>
+            <SolidColorBrush x:Key="NodePathTextBrush" Color="#BBF7D0"/>
+
+            <SolidColorBrush x:Key="EdgeStrokeBrush" Color="#5C6270"/>
+            <SolidColorBrush x:Key="EdgeExaminedBrush" Color="#FBBF24"/>
+            <SolidColorBrush x:Key="EdgePathBrush" Color="#4ADE80"/>
+            <SolidColorBrush x:Key="WeightBackgroundBrush" Color="#23262D"/>
+            <SolidColorBrush x:Key="WeightBorderBrush" Color="#3A3E47"/>
+            <SolidColorBrush x:Key="WeightTextBrush" Color="#ECEDF0"/>
+
+            <SolidColorBrush x:Key="ChartGridBrush" Color="#2A2D34"/>
+            <SolidColorBrush x:Key="ChartSeries1Brush" Color="#60A5FA"/>
+            <SolidColorBrush x:Key="ChartSeries2Brush" Color="#F87171"/>
+            <SolidColorBrush x:Key="ChartSeries3Brush" Color="#34D399"/>
+
+            <BoxShadows x:Key="CardShadow">0 1 2 0 #40000000</BoxShadows>
+            <BoxShadows x:Key="CardHoverShadow">0 8 24 0 #66000000</BoxShadows>
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+
+    <!-- Акцент: в обеих темах берётся из палитры Fluent, которую настраивает ThemeService -->
+    <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource SystemAccentColor}"/>
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="{DynamicResource SystemAccentColor}" Opacity="0.14"/>
+</ResourceDictionary>

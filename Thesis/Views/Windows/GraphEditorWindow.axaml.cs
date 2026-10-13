@@ -22,6 +22,11 @@ public partial class GraphEditorWindow : Window
         GraphCanvas.PointerPressed += OnPointerPressed;
         GraphCanvas.PointerMoved += OnPointerMoved;
         GraphCanvas.PointerReleased += OnPointerReleased;
+        GraphCanvas.DoubleTapped += (_, e) =>
+        {
+            Vm?.AddNodeAtCenter(e.GetPosition(GraphCanvas));
+            e.Handled = true;
+        };
 
         Opened += (_, _) => Dispatcher.UIThread.Post(CenterView, DispatcherPriority.Loaded);
         Closed += (_, _) => Vm?.CancelEdgeCreation();

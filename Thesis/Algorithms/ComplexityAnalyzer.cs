@@ -1,6 +1,5 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using Thesis.Models;
 
 namespace Thesis.Algorithms;
@@ -45,23 +44,8 @@ public class ComplexityAnalyzer : IComplexityAnalyzer
         return new ComplexityReport(points, BuildSummary());
     }
 
-    private static string BuildSummary()
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("📊 АНАЛИЗ СЛОЖНОСТИ АЛГОРИТМА ДЕЙКСТРЫ");
-        sb.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        sb.AppendLine("");
-        sb.AppendLine("График показывает теоретическую сложность");
-        sb.AppendLine("алгоритма Дейкстры в зависимости от размера графа:");
-        sb.AppendLine("");
-        sb.AppendLine("  🔵 O(1) - константная (идеальный случай)");
-        sb.AppendLine("  🟢 O(V log V) - алгоритм с бинарной кучей");
-        sb.AppendLine("  🔴 O(V²) - алгоритм без оптимизации");
-        sb.AppendLine("");
-        sb.AppendLine("Алгоритм Дейкстры с кучей (O(V log V))");
-        sb.AppendLine("значительно быстрее на больших графах,");
-        sb.AppendLine("чем реализация без кучи (O(V²)).");
-
-        return sb.ToString();
-    }
+    private static string BuildSummary() =>
+        "Реализация с двоичной кучей работает за O((V + E) log V), без кучи — за O(V²). " +
+        "На малых графах разница незаметна, но с ростом числа вершин квадратичная " +
+        "реализация отстаёт всё сильнее. O(1) показана для сравнения как нижняя граница.";
 }

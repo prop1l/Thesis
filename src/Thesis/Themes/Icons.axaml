@@ -1,0 +1,38 @@
+<!-- Иконки в стиле Lucide (линейные, сетка 24×24). Используются через controls:Icon Data="{StaticResource Icon.Plus}" -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <StreamGeometry x:Key="Icon.Plus">M5 12h14 M12 5v14</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Minus">M5 12h14</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Check">M20 6L9 17l-5-5</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Close">M18 6L6 18 M6 6l12 12</StreamGeometry>
+    <StreamGeometry x:Key="Icon.ChevronLeft">M15 18l-6-6 6-6</StreamGeometry>
+    <StreamGeometry x:Key="Icon.ChevronRight">M9 18l6-6-6-6</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Trash">M3 6h18 M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6 M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2 M10 11v6 M14 11v6</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Pencil">M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z M15 5l4 4</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Save">M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Settings">M21 4h-7 M10 4H3 M21 12h-9 M8 12H3 M21 20h-5 M12 20H3 M14 2v4 M8 10v4 M16 18v4</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Sun">M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8z M12 2v2 M12 20v2 M4.93 4.93l1.41 1.41 M17.66 17.66l1.41 1.41 M2 12h2 M20 12h2 M6.34 17.66l-1.41 1.41 M19.07 4.93l-1.41 1.41</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Moon">M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Monitor">M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M8 21h8 M12 17v4</StreamGeometry>
+    <StreamGeometry x:Key="Icon.ZoomIn">M11 3a8 8 0 1 0 0 16a8 8 0 1 0 0-16z M21 21l-4.35-4.35 M11 8v6 M8 11h6</StreamGeometry>
+    <StreamGeometry x:Key="Icon.ZoomOut">M11 3a8 8 0 1 0 0 16a8 8 0 1 0 0-16z M21 21l-4.35-4.35 M8 11h6</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Undo">M9 14L4 9l5-5 M4 9h10.5a5.5 5.5 0 0 1 0 11H11</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Redo">M15 14l5-5-5-5 M20 9H9.5a5.5 5.5 0 0 0 0 11H13</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Reset">M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Play">M6 4l14 8-14 8z</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Stop">M6 6h12v12H6z</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Search">M11 3a8 8 0 1 0 0 16a8 8 0 1 0 0-16z M21 21l-4.35-4.35</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Info">M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z M12 16v-4 M12 8h.01</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Grid">M3 3h18v18H3z M3 9h18 M3 15h18 M9 3v18 M15 3v18</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Chart">M3 3v18h18 M7 16l4-5 4 3 5-7</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Route">M6 16a3 3 0 1 0 0 6a3 3 0 1 0 0-6z M18 2a3 3 0 1 0 0 6a3 3 0 1 0 0-6z M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Sliders">M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M1 14h6 M9 8h6 M17 16h6</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Palette">M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4c3 0 5.6-2.5 5.6-5.6C23 5.4 18 2 12 2z M7.5 10.5h.01 M10.5 6.5h.01 M15.5 6.5h.01 M17.5 10.5h.01</StreamGeometry>
+    <StreamGeometry x:Key="Icon.MoreVertical">M12 5h.01 M12 12h.01 M12 19h.01</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Mouse">M12 2a6 6 0 0 0-6 6v8a6 6 0 0 0 12 0V8a6 6 0 0 0-6-6z M12 6v4</StreamGeometry>
+    <StreamGeometry x:Key="Icon.Maximize">M8 3H5a2 2 0 0 0-2 2v3 M21 8V5a2 2 0 0 0-2-2h-3 M3 16v3a2 2 0 0 0 2 2h3 M16 21h3a2 2 0 0 0 2-2v-3</StreamGeometry>
+
+    <!-- Логотип: три вершины и рёбра между ними -->
+    <StreamGeometry x:Key="Icon.Graph">M8.5 6a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z M20.5 8a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z M12.5 18a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z M8.4 6.4l7.2 1.2 M6.9 8.3l2.2 7.4 M16.3 10l-4.8 6.2</StreamGeometry>
+</ResourceDictionary>

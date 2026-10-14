@@ -1,4 +1,8 @@
 <Solution>
-  <Project Path="Thesis.Tests/Thesis.Tests.csproj" />
-  <Project Path="Thesis/Thesis.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/Thesis/Thesis.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Thesis.Tests/Thesis.Tests.csproj" />
+  </Folder>
 </Solution>

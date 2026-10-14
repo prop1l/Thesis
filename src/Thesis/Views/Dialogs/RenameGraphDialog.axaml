@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Thesis.ViewModels.Dialogs"
+        xmlns:controls="using:Thesis.Controls"
+        x:Class="Thesis.Views.Dialogs.RenameGraphDialog"
+        x:DataType="vm:RenameGraphDialogViewModel"
+        Title="Переименовать граф"
+        Width="440"
+        SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <StackPanel Margin="24" Spacing="20">
+        <StackPanel Spacing="4">
+            <TextBlock Classes="h2" Text="Переименовать граф"/>
+            <TextBlock Classes="caption" Text="Название показывается на главном экране и в заголовке редактора."/>
+        </StackPanel>
+
+        <StackPanel Spacing="6">
+            <TextBox x:Name="NameBox"
+                     Text="{Binding GraphName, UpdateSourceTrigger=PropertyChanged}"
+                     PlaceholderText="Название графа">
+                <TextBox.KeyBindings>
+                    <KeyBinding Gesture="Enter" Command="{Binding SaveCommand}"/>
+                </TextBox.KeyBindings>
+            </TextBox>
+            <TextBlock Classes="caption"
+                       Foreground="{DynamicResource DangerBrush}"
+                       Text="{Binding ErrorText}"
+                       IsVisible="{Binding HasError}"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="secondary" Content="Отмена" MinWidth="100"
+                    Command="{Binding CancelCommand}" HotKey="Escape"/>
+            <Button Classes="accent" Content="Сохранить" MinWidth="100"
+                    Command="{Binding SaveCommand}"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -56,4 +56,4 @@ cd Thesis
 dotnet restore
 
 # Запуск приложения
-dotnet run --project Thesis
+dotnet run --project src/Thesis

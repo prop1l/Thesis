@@ -1,0 +1,627 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:Thesis.ViewModels.Editor"
+        xmlns:controls="using:Thesis.Controls"
+        mc:Ignorable="d"
+        d:DesignWidth="1280" d:DesignHeight="820"
+        x:Class="Thesis.Views.Editor.GraphEditorWindow"
+        x:DataType="vm:GraphEditorViewModel"
+        Title="{Binding GraphName, StringFormat='{}{0} — редактор графа'}"
+        Width="1280" Height="820"
+        MinWidth="980" MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/Icon.ico">
+
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Delete" Command="{Binding DeleteSelectedCommand}"/>
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}"/>
+        <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding ZoomInCommand}"/>
+        <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding ZoomOutCommand}"/>
+        <KeyBinding Gesture="Ctrl+D0" Command="{Binding ResetZoomCommand}"/>
+    </Window.KeyBindings>
+
+    <Window.Styles>
+        <!-- ===== Вершины: состояния алгоритма взаимоисключающие, выделение — обводка поверх ===== -->
+        <Style Selector="Ellipse.node">
+            <Setter Property="Fill" Value="{DynamicResource NodeFillBrush}"/>
+            <Setter Property="Stroke" Value="{DynamicResource NodeStrokeBrush}"/>
+            <Setter Property="StrokeThickness" Value="1.5"/>
+        </Style>
+        <Style Selector="Ellipse.node.visited">
+            <Setter Property="Fill" Value="{DynamicResource NodeVisitedFillBrush}"/>
+            <Setter Property="Stroke" Value="{DynamicResource NodeVisitedStrokeBrush}"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+        </Style>
+        <Style Selector="Ellipse.node.path">
+            <Setter Property="Fill" Value="{DynamicResource NodePathFillBrush}"/>
+            <Setter Property="Stroke" Value="{DynamicResource NodePathStrokeBrush}"/>
+            <Setter Property="StrokeThickness" Value="2.5"/>
+        </Style>
+        <Style Selector="Ellipse.node.current">
+            <Setter Property="Fill" Value="{DynamicResource NodeCurrentFillBrush}"/>
+            <Setter Property="Stroke" Value="{DynamicResource NodeCurrentStrokeBrush}"/>
+            <Setter Property="StrokeThickness" Value="2.5"/>
+        </Style>
+        <Style Selector="Ellipse.node.selected">
+            <Setter Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="StrokeThickness" Value="3"/>
+        </Style>
+
+        <Style Selector="TextBlock.node">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="{DynamicResource NodeTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.node.visited">
+            <Setter Property="Foreground" Value="{DynamicResource NodeVisitedTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.node.path">
+            <Setter Property="Foreground" Value="{DynamicResource NodePathTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.node.current">
+            <Setter Property="Foreground" Value="{DynamicResource NodeCurrentTextBrush}"/>
+        </Style>
+
+        <!-- ===== Рёбра ===== -->
+        <Style Selector="Line.edge, Polyline.edge">
+            <Setter Property="Stroke" Value="{DynamicResource EdgeStrokeBrush}"/>
+        </Style>
+        <Style Selector="Line.edge.selected, Polyline.edge.selected">
+            <Setter Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="Line.edge.examined, Polyline.edge.examined">
+            <Setter Property="Stroke" Value="{DynamicResource EdgeExaminedBrush}"/>
+        </Style>
+        <Style Selector="Line.edge.path, Polyline.edge.path">
+            <Setter Property="Stroke" Value="{DynamicResource EdgePathBrush}"/>
+        </Style>
+
+        <Style Selector="Border.weight">
+            <Setter Property="Background" Value="{DynamicResource WeightBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WeightBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="7,1"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Border.weight > TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource WeightTextBrush}"/>
+        </Style>
+
+        <!-- Плавающие подсказки поверх холста -->
+        <Style Selector="Border.overlay">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="BoxShadow" Value="{DynamicResource CardShadow}"/>
+        </Style>
+
+        <!-- Точка легенды -->
+        <Style Selector="Ellipse.legend">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TabControl">
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- ================= ПАНЕЛЬ ИНСТРУМЕНТОВ ================= -->
+        <Border Grid.Row="0" Classes="panel" BorderThickness="0,0,0,1" Padding="16,10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Название и тип -->
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}">
+                        <controls:Icon Data="{StaticResource Icon.Graph}" Size="18" Foreground="{DynamicResource AccentBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Classes="h3" FontSize="15" Text="{Binding GraphName}" MaxWidth="260" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Classes="caption" Text="{Binding GraphKindTitle}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Действия -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                    <Button Classes="secondary" Command="{Binding AddNodeCommand}"
+                            ToolTip.Tip="Добавить вершину (или двойной клик по холсту)">
+                        <StackPanel Classes="btn">
+                            <controls:Icon Data="{StaticResource Icon.Plus}"/>
+                            <TextBlock Text="Вершина"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="ghost danger" Command="{Binding DeleteSelectedCommand}"
+                            IsEnabled="{Binding !IsNothingSelected}"
+                            ToolTip.Tip="Удалить выделенную вершину или ребро (Delete)">
+                        <StackPanel Classes="btn">
+                            <controls:Icon Data="{StaticResource Icon.Trash}"/>
+                            <TextBlock Text="Удалить"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="ghost" Command="{Binding DeleteAllCommand}"
+                            IsEnabled="{Binding !IsGraphEmpty}"
+                            ToolTip.Tip="Удалить все вершины и рёбра">
+                        <TextBlock Text="Очистить"/>
+                    </Button>
+
+                    <Border Classes="vdivider"/>
+
+                    <Button Classes="ghost icon" Command="{Binding ZoomOutCommand}" ToolTip.Tip="Уменьшить (Ctrl −)">
+                        <controls:Icon Data="{StaticResource Icon.ZoomOut}"/>
+                    </Button>
+                    <Button Classes="ghost" MinWidth="58" Command="{Binding ResetZoomCommand}" ToolTip.Tip="Сбросить масштаб (Ctrl 0)">
+                        <TextBlock Text="{Binding ZoomLevel, StringFormat={}{0:P0}}" FontWeight="Medium"/>
+                    </Button>
+                    <Button Classes="ghost icon" Command="{Binding ZoomInCommand}" ToolTip.Tip="Увеличить (Ctrl +)">
+                        <controls:Icon Data="{StaticResource Icon.ZoomIn}"/>
+                    </Button>
+                </StackPanel>
+
+                <!-- Сохранение -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Classes="caption muted" Text="Автосохранение включено" VerticalAlignment="Center"/>
+                    <Button Classes="accent" Command="{Binding SaveCommand}" ToolTip.Tip="Сохранить (Ctrl+S)">
+                        <StackPanel Classes="btn">
+                            <controls:Icon Data="{StaticResource Icon.Save}"/>
+                            <TextBlock Text="Сохранить"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,380">
+
+            <!-- ================= ХОЛСТ ================= -->
+            <Panel Grid.Column="0" Background="{DynamicResource CanvasBackgroundBrush}">
+                <ScrollViewer x:Name="GraphScrollViewer"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                    <!-- Холст рисуется привязками к Nodes/Edges ViewModel-и.
+                         Слои: линии рёбер → вершины → стрелки и веса (поверх вершин).
+                         Слои не ловят мышь (IsHitTestVisible=False): клики получает сама панель,
+                         а попадание в вершину/ребро считает ViewModel. -->
+                    <Panel x:Name="GraphCanvas"
+                           Width="2000" Height="2000"
+                           Background="{DynamicResource CanvasGridBrush}"
+                           ClipToBounds="True">
+                        <Panel.RenderTransform>
+                            <ScaleTransform ScaleX="{Binding ZoomLevel}" ScaleY="{Binding ZoomLevel}"/>
+                        </Panel.RenderTransform>
+
+                        <!-- Временная линия при создании ребра -->
+                        <Line StartPoint="{Binding PendingEdgeStart}"
+                              EndPoint="{Binding PendingEdgeEnd}"
+                              IsVisible="{Binding IsCreatingEdge}"
+                              Stroke="{DynamicResource AccentBrush}"
+                              StrokeThickness="2"
+                              StrokeDashArray="4,3"
+                              IsHitTestVisible="False"/>
+
+                        <!-- Слой 1: линии рёбер -->
+                        <ItemsControl ItemsSource="{Binding Edges}" IsHitTestVisible="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:EdgeViewModel">
+                                    <Line Classes="edge"
+                                          Classes.path="{Binding ShowPath}"
+                                          Classes.examined="{Binding ShowExamined}"
+                                          Classes.selected="{Binding ShowSelected}"
+                                          StartPoint="{Binding StartPoint}"
+                                          EndPoint="{Binding EndPoint}"
+                                          StrokeThickness="{Binding StrokeThickness}"
+                                          StrokeDashArray="{Binding StrokeDashArray}"
+                                          StrokeLineCap="Round"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Слой 2: вершины -->
+                        <ItemsControl ItemsSource="{Binding Nodes}" IsHitTestVisible="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:NodeViewModel">
+                                    <Canvas>
+                                        <Ellipse Classes="node"
+                                                 Classes.current="{Binding ShowCurrent}"
+                                                 Classes.path="{Binding ShowPath}"
+                                                 Classes.visited="{Binding ShowVisited}"
+                                                 Classes.selected="{Binding IsSelected}"
+                                                 Canvas.Left="{Binding X}"
+                                                 Canvas.Top="{Binding Y}"
+                                                 Width="{Binding Width}"
+                                                 Height="{Binding Height}"/>
+                                        <!-- Текст центрируется внутри квадрата размером с вершину -->
+                                        <Panel Canvas.Left="{Binding X}"
+                                               Canvas.Top="{Binding Y}"
+                                               Width="{Binding Width}"
+                                               Height="{Binding Height}">
+                                            <TextBlock Classes="node"
+                                                       Classes.current="{Binding ShowCurrent}"
+                                                       Classes.path="{Binding ShowPath}"
+                                                       Classes.visited="{Binding ShowVisited}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="{Binding FontSize}"
+                                                       Text="{Binding DisplayText}"/>
+                                        </Panel>
+                                    </Canvas>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Слой 3: стрелки и веса поверх вершин -->
+                        <ItemsControl ItemsSource="{Binding Edges}" IsHitTestVisible="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><Canvas/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:EdgeViewModel">
+                                    <Canvas>
+                                        <Polyline Classes="edge"
+                                                  Classes.path="{Binding ShowPath}"
+                                                  Classes.examined="{Binding ShowExamined}"
+                                                  Classes.selected="{Binding ShowSelected}"
+                                                  Points="{Binding ArrowPoints}"
+                                                  StrokeThickness="{Binding StrokeThickness}"
+                                                  StrokeLineCap="Round"
+                                                  StrokeJoin="Round"
+                                                  IsVisible="{Binding $parent[Window].((vm:GraphEditorViewModel)DataContext).IsDirectedGraph}"/>
+                                        <Border Classes="weight"
+                                                Canvas.Left="{Binding WeightLeft}"
+                                                Canvas.Top="{Binding WeightTop}"
+                                                IsVisible="{Binding $parent[Window].((vm:GraphEditorViewModel)DataContext).IsWeightedGraph}">
+                                            <TextBlock Text="{Binding WeightText}" FontSize="{Binding FontSize}"/>
+                                        </Border>
+                                    </Canvas>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Panel>
+                </ScrollViewer>
+
+                <!-- Пустой граф -->
+                <Border Classes="overlay" Padding="28,24" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        IsVisible="{Binding IsGraphEmpty}" IsHitTestVisible="False">
+                    <StackPanel Spacing="10" HorizontalAlignment="Center">
+                        <Border Width="52" Height="52" CornerRadius="26" HorizontalAlignment="Center"
+                                Background="{DynamicResource AccentSoftBrush}">
+                            <controls:Icon Data="{StaticResource Icon.Graph}" Size="26" Foreground="{DynamicResource AccentBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Classes="h2" Text="Граф пока пуст" HorizontalAlignment="Center"/>
+                        <TextBlock Classes="secondary" TextAlignment="Center" MaxWidth="320" TextWrapping="Wrap"
+                                   Text="Дважды щёлкните по холсту или нажмите «Вершина» на панели сверху."/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Подсказка при создании ребра -->
+                <Border Classes="overlay" Margin="0,16,0,0" HorizontalAlignment="Center" VerticalAlignment="Top"
+                        BorderBrush="{DynamicResource AccentBrush}"
+                        IsVisible="{Binding IsCreatingEdge}" IsHitTestVisible="False">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <controls:Icon Data="{StaticResource Icon.Info}" Foreground="{DynamicResource AccentBrush}"/>
+                        <TextBlock FontSize="13" Text="Щёлкните правой кнопкой по второй вершине. ПКМ по пустому месту — отмена."/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Подсказка по управлению -->
+                <Border Classes="overlay" Margin="16" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                        IsHitTestVisible="False">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <controls:Icon Data="{StaticResource Icon.Mouse}" Foreground="{DynamicResource TextMutedBrush}"/>
+                        <TextBlock Classes="caption"><Run FontWeight="SemiBold" Text="Двойной клик"/> — вершина</TextBlock>
+                        <TextBlock Classes="caption"><Run FontWeight="SemiBold" Text="ЛКМ"/> — выбрать, перетащить</TextBlock>
+                        <TextBlock Classes="caption"><Run FontWeight="SemiBold" Text="ПКМ"/> по двум вершинам — ребро</TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Легенда алгоритма -->
+                <Border Classes="overlay" Margin="16" HorizontalAlignment="Right" VerticalAlignment="Top"
+                        IsVisible="{Binding IsDijkstraMode}" IsHitTestVisible="False">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse Classes="legend" Fill="{DynamicResource NodeCurrentFillBrush}" Stroke="{DynamicResource NodeCurrentStrokeBrush}"/>
+                            <TextBlock Classes="caption" Text="текущая"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse Classes="legend" Fill="{DynamicResource NodeVisitedFillBrush}" Stroke="{DynamicResource NodeVisitedStrokeBrush}"/>
+                            <TextBlock Classes="caption" Text="обработана"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Border Width="16" Height="3" CornerRadius="2" VerticalAlignment="Center" Background="{DynamicResource EdgeExaminedBrush}"/>
+                            <TextBlock Classes="caption" Text="проверяемое ребро"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse Classes="legend" Fill="{DynamicResource NodePathFillBrush}" Stroke="{DynamicResource NodePathStrokeBrush}"/>
+                            <TextBlock Classes="caption" Text="кратчайший путь"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Panel>
+
+            <!-- ================= БОКОВАЯ ПАНЕЛЬ ================= -->
+            <Border Grid.Column="1" Classes="panel" BorderThickness="1,0,0,0">
+                <TabControl x:Name="SidePanelTabs" Margin="12,4,0,0">
+
+                    <!-- ===== Вкладка «Граф» ===== -->
+                    <TabItem Header="Граф">
+                        <ScrollViewer>
+                            <StackPanel Margin="4,8,16,20" Spacing="22">
+
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="overline" Text="ТИП ГРАФА"/>
+                                    <ComboBox HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding GraphKindOptions}"
+                                              SelectedItem="{Binding SelectedGraphKindOption}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:GraphKindOption">
+                                                <TextBlock Text="{Binding Title}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <UniformGrid Columns="2" ColumnSpacing="10">
+                                        <Border Classes="stat">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding NodesCount}" FontSize="22" FontWeight="SemiBold"/>
+                                                <TextBlock Classes="caption" Text="вершин"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Classes="stat">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding EdgesCount}" FontSize="22" FontWeight="SemiBold"/>
+                                                <TextBlock Classes="caption" Text="рёбер"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </UniformGrid>
+                                </StackPanel>
+
+                                <!-- Выделенный элемент -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="overline" Text="ВЫДЕЛЕНИЕ"/>
+
+                                    <Border Classes="sunken" IsVisible="{Binding IsNothingSelected}">
+                                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                            <controls:Icon Data="{StaticResource Icon.Info}" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Top"/>
+                                            <TextBlock Grid.Column="1" Classes="caption" TextWrapping="Wrap"
+                                                       Text="Щёлкните по вершине или ребру на холсте, чтобы изменить их свойства."/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Вершина -->
+                                    <StackPanel Spacing="10" IsVisible="{Binding IsNodeSelected}">
+                                        <Border Classes="badge" HorizontalAlignment="Left"><TextBlock Text="Вершина"/></Border>
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Classes="label" Text="Название"/>
+                                            <TextBox Text="{Binding SelectedNode.Label, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Classes="label" Text="X"/>
+                                                <NumericUpDown Value="{Binding SelectedNode.X}" Minimum="0" Maximum="1960" Increment="10" FormatString="0"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Spacing="4">
+                                                <TextBlock Classes="label" Text="Y"/>
+                                                <NumericUpDown Value="{Binding SelectedNode.Y}" Minimum="0" Maximum="1960" Increment="10" FormatString="0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <Button Classes="ghost danger" Command="{Binding DeleteSelectedCommand}" HorizontalAlignment="Left">
+                                            <StackPanel Classes="btn">
+                                                <controls:Icon Data="{StaticResource Icon.Trash}"/>
+                                                <TextBlock Text="Удалить вершину и её рёбра"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+
+                                    <!-- Ребро -->
+                                    <StackPanel Spacing="10" IsVisible="{Binding IsEdgeSelected}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <Border Classes="badge"><TextBlock Text="Ребро"/></Border>
+                                            <TextBlock Classes="secondary" VerticalAlignment="Center">
+                                                <Run Text="{Binding SelectedEdge.Source.Label}"/>
+                                                <Run Text="→"/>
+                                                <Run Text="{Binding SelectedEdge.Target.Label}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Classes="label" Text="Название"/>
+                                            <TextBox Text="{Binding SelectedEdge.Label, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </StackPanel>
+                                        <StackPanel Spacing="4" IsVisible="{Binding IsWeightedGraph}">
+                                            <TextBlock Classes="label" Text="Вес"/>
+                                            <NumericUpDown Value="{Binding SelectedEdge.Weight}" Minimum="0" Maximum="1000" Increment="1" FormatString="0.##"/>
+                                        </StackPanel>
+                                        <TextBlock Classes="caption" TextWrapping="Wrap" IsVisible="{Binding !IsWeightedGraph}"
+                                                   Text="Граф невзвешенный: длина каждого ребра равна 1. Тип графа меняется выше."/>
+                                        <Button Classes="ghost danger" Command="{Binding DeleteSelectedCommand}" HorizontalAlignment="Left">
+                                            <StackPanel Classes="btn">
+                                                <controls:Icon Data="{StaticResource Icon.Trash}"/>
+                                                <TextBlock Text="Удалить ребро"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Оформление -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="overline" Text="ОФОРМЛЕНИЕ"/>
+                                    <Grid ColumnDefinitions="*,120" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                                        <TextBlock Grid.Row="0" Classes="label" Text="Ширина вершины"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding GraphStyle.Node.Width}" Minimum="30" Maximum="120" Increment="5" FormatString="0"/>
+                                        <TextBlock Grid.Row="1" Classes="label" Text="Высота вершины"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding GraphStyle.Node.Height}" Minimum="30" Maximum="120" Increment="5" FormatString="0"/>
+                                        <TextBlock Grid.Row="2" Classes="label" Text="Шрифт вершины"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding GraphStyle.Node.FontSize}" Minimum="8" Maximum="30" Increment="1" FormatString="0"/>
+                                        <TextBlock Grid.Row="3" Classes="label" Text="Толщина ребра"/>
+                                        <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding GraphStyle.Edge.StrokeThickness}" Minimum="1" Maximum="10" Increment="0.5" FormatString="0.#"/>
+                                        <TextBlock Grid.Row="4" Classes="label" Text="Шрифт веса"/>
+                                        <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding GraphStyle.Edge.FontSize}" Minimum="8" Maximum="30" Increment="1" FormatString="0"/>
+                                        <TextBlock Grid.Row="5" Classes="label" Text="Пунктирные рёбра"/>
+                                        <ToggleSwitch Grid.Row="5" Grid.Column="1" HorizontalAlignment="Right"
+                                                      OnContent="" OffContent=""
+                                                      IsChecked="{Binding GraphStyle.Edge.IsDashed}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ===== Вкладка «Дейкстра» ===== -->
+                    <TabItem Header="Дейкстра">
+                        <ScrollViewer>
+                            <StackPanel Margin="4,8,16,20" Spacing="22">
+
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="overline" Text="КРАТЧАЙШИЙ ПУТЬ"/>
+                                    <TextBlock Classes="caption" TextWrapping="Wrap"
+                                               Text="Выберите вершины, запустите алгоритм и проходите его по шагам — состояние отображается на холсте."/>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Classes="label" Text="Откуда"/>
+                                            <ComboBox HorizontalAlignment="Stretch" PlaceholderText="Вершина"
+                                                      ItemsSource="{Binding Nodes}" SelectedItem="{Binding DijkstraStartNode}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:NodeViewModel">
+                                                        <TextBlock Text="{Binding Label}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Spacing="4">
+                                            <TextBlock Classes="label" Text="Куда"/>
+                                            <ComboBox HorizontalAlignment="Stretch" PlaceholderText="Вершина"
+                                                      ItemsSource="{Binding Nodes}" SelectedItem="{Binding DijkstraEndNode}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:NodeViewModel">
+                                                        <TextBlock Text="{Binding Label}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <Button Classes="accent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding RunDijkstraCommand}" IsEnabled="{Binding CanRunDijkstra}">
+                                            <StackPanel Classes="btn">
+                                                <controls:Icon Data="{StaticResource Icon.Play}"/>
+                                                <TextBlock Text="Запустить"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="1" Classes="secondary" Command="{Binding ClearDijkstraCommand}"
+                                                IsEnabled="{Binding IsDijkstraMode}" ToolTip.Tip="Сбросить подсветку на холсте">
+                                            <StackPanel Classes="btn">
+                                                <controls:Icon Data="{StaticResource Icon.Reset}"/>
+                                                <TextBlock Text="Сброс"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- Текущий шаг -->
+                                <Border Classes="card" Padding="14" IsVisible="{Binding IsDijkstraMode}">
+                                    <StackPanel Spacing="10">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="overline" Text="{Binding StepCounterText}" VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <Button Classes="secondary icon" Width="32" Height="32"
+                                                        Command="{Binding PreviousDijkstraStepCommand}"
+                                                        IsEnabled="{Binding CanGoToPreviousStep}" ToolTip.Tip="Предыдущий шаг">
+                                                    <controls:Icon Data="{StaticResource Icon.ChevronLeft}"/>
+                                                </Button>
+                                                <Button Classes="accent icon" Width="32" Height="32"
+                                                        Command="{Binding NextDijkstraStepCommand}"
+                                                        IsEnabled="{Binding CanGoToNextStep}" ToolTip.Tip="Следующий шаг">
+                                                    <controls:Icon Data="{StaticResource Icon.ChevronRight}"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                        <ProgressBar Value="{Binding StepProgress}" Minimum="0" Maximum="100" Height="4" MinHeight="4"/>
+                                        <TextBlock Classes="h3" Text="{Binding CurrentDijkstraStep.Title}"/>
+                                        <TextBlock Classes="secondary" TextWrapping="Wrap" Text="{Binding DijkstraStatus}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Таблица расстояний -->
+                                <StackPanel Spacing="8" IsVisible="{Binding IsDijkstraMode}">
+                                    <TextBlock Classes="overline" Text="РАССТОЯНИЯ ОТ НАЧАЛЬНОЙ ВЕРШИНЫ"/>
+                                    <Border Classes="sunken" Padding="4">
+                                        <ItemsControl ItemsSource="{Binding Nodes}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:NodeViewModel">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10" Margin="8,6">
+                                                        <Ellipse Width="10" Height="10" VerticalAlignment="Center"
+                                                                 Classes="node"
+                                                                 Classes.current="{Binding ShowCurrent}"
+                                                                 Classes.path="{Binding ShowPath}"
+                                                                 Classes.visited="{Binding ShowVisited}"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="13"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding DistanceLabel}" FontSize="13" FontWeight="SemiBold"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ===== Вкладка «Анализ» ===== -->
+                    <TabItem Header="Анализ">
+                        <ScrollViewer>
+                            <StackPanel Margin="4,8,16,20" Spacing="22">
+
+                                <StackPanel Spacing="10">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Classes="overline" Text="МАТРИЦА СМЕЖНОСТИ" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" Classes="ghost icon" Width="28" Height="28"
+                                                Command="{Binding BuildAdjacencyMatrixCommand}" ToolTip.Tip="Обновить">
+                                            <controls:Icon Data="{StaticResource Icon.Reset}" Size="14"/>
+                                        </Button>
+                                    </Grid>
+                                    <Border Classes="sunken">
+                                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" MaxHeight="240">
+                                            <SelectableTextBlock Classes="mono" Text="{Binding AdjacencyMatrixText}"
+                                                                 Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </StackPanel>
+
+                                <StackPanel Spacing="10">
+                                    <TextBlock Classes="overline" Text="СЛОЖНОСТЬ АЛГОРИТМА"/>
+                                    <Border Classes="sunken" Padding="8">
+                                        <controls:PerformanceChart Data="{Binding ChartData}" Height="220"/>
+                                    </Border>
+                                    <TextBlock Classes="caption" TextWrapping="Wrap"
+                                               Text="По горизонтали — число вершин V, по вертикали — число операций (усл. ед.)."/>
+                                    <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Command="{Binding BuildPerformanceChartCommand}">
+                                        <StackPanel Classes="btn">
+                                            <controls:Icon Data="{StaticResource Icon.Chart}"/>
+                                            <TextBlock Text="Построить график"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock Classes="caption" TextWrapping="Wrap" Text="{Binding PerformanceSummary}"
+                                               IsVisible="{Binding PerformanceSummary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

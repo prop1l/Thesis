@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Thesis.Algorithms;
 using Thesis.Models.Graph;
 using Thesis.Services;
@@ -11,11 +11,11 @@ namespace Thesis.Tests.ViewModels.Editor;
 public class DijkstraTests
 {
     [Fact]
-    public void RunDijkstra_FindsShortestPath()
+    public void RunSearch_FindsShortestPath()
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
+        var vm = new GraphEditorViewModel(repository, PathAlgorithmCatalog.CreateAll(), new ComplexityAnalyzer());
 
         vm.LoadGraph("DijkstraGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -44,16 +44,16 @@ public class DijkstraTests
         vm.SelectedEdge = vm.Edges.Last();
         vm.UpdateSelectedEdgeWeight(10);
 
-        vm.DijkstraStartNode = a;
-        vm.DijkstraEndNode = c;
+        vm.SearchStartNode = a;
+        vm.SearchEndNode = c;
 
-        vm.RunDijkstraCommand.Execute(null);
+        vm.RunSearchCommand.Execute(null);
 
-        Assert.True(vm.IsDijkstraMode);
-        Assert.NotEmpty(vm.DijkstraSteps);
-        Assert.NotNull(vm.CurrentDijkstraStep);
+        Assert.True(vm.IsSearchMode);
+        Assert.NotEmpty(vm.SearchSteps);
+        Assert.NotNull(vm.CurrentStep);
 
-        var finalStep = vm.DijkstraSteps.Last();
+        var finalStep = vm.SearchSteps.Last();
 
         Assert.True(finalStep.IsFinished);
         Assert.Equal(c.Id, finalStep.CurrentNodeId);
@@ -66,11 +66,11 @@ public class DijkstraTests
     }
 
     [Fact]
-    public void RunDijkstra_WhenNoPath_FinishesWithEmptyFinalPath()
+    public void RunSearch_WhenNoPath_FinishesWithEmptyFinalPath()
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
+        var vm = new GraphEditorViewModel(repository, PathAlgorithmCatalog.CreateAll(), new ComplexityAnalyzer());
 
         vm.LoadGraph("NoPathGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -87,12 +87,12 @@ public class DijkstraTests
         vm.SelectedEdge = vm.Edges[0];
         vm.UpdateSelectedEdgeWeight(5);
 
-        vm.DijkstraStartNode = a;
-        vm.DijkstraEndNode = c;
+        vm.SearchStartNode = a;
+        vm.SearchEndNode = c;
 
-        vm.RunDijkstraCommand.Execute(null);
+        vm.RunSearchCommand.Execute(null);
 
-        var finalStep = vm.DijkstraSteps.Last();
+        var finalStep = vm.SearchSteps.Last();
 
         Assert.True(finalStep.IsFinished);
         Assert.Empty(finalStep.FinalPathNodeIds);
@@ -101,11 +101,11 @@ public class DijkstraTests
     }
 
     [Fact]
-    public void NextAndPreviousDijkstraStep_ChangesCurrentStepIndex()
+    public void NextAndPreviousStep_ChangesCurrentStepIndex()
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
+        var vm = new GraphEditorViewModel(repository, PathAlgorithmCatalog.CreateAll(), new ComplexityAnalyzer());
 
         vm.LoadGraph("StepGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -120,31 +120,31 @@ public class DijkstraTests
         vm.SelectedEdge = vm.Edges[0];
         vm.UpdateSelectedEdgeWeight(1);
 
-        vm.DijkstraStartNode = a;
-        vm.DijkstraEndNode = b;
+        vm.SearchStartNode = a;
+        vm.SearchEndNode = b;
 
-        vm.RunDijkstraCommand.Execute(null);
+        vm.RunSearchCommand.Execute(null);
 
-        Assert.True(vm.CurrentDijkstraStepIndex >= 0);
+        Assert.True(vm.CurrentStepIndex >= 0);
 
-        var firstIndex = vm.CurrentDijkstraStepIndex;
+        var firstIndex = vm.CurrentStepIndex;
 
         if (vm.CanGoToNextStep)
         {
-            vm.NextDijkstraStepCommand.Execute(null);
-            Assert.True(vm.CurrentDijkstraStepIndex > firstIndex);
+            vm.NextStepCommand.Execute(null);
+            Assert.True(vm.CurrentStepIndex > firstIndex);
 
-            vm.PreviousDijkstraStepCommand.Execute(null);
-            Assert.Equal(firstIndex, vm.CurrentDijkstraStepIndex);
+            vm.PreviousStepCommand.Execute(null);
+            Assert.Equal(firstIndex, vm.CurrentStepIndex);
         }
     }
 
     [Fact]
-    public void ClearDijkstra_ResetsState()
+    public void ClearSearch_ResetsState()
     {
         using var folder = new TestFolder();
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
+        var vm = new GraphEditorViewModel(repository, PathAlgorithmCatalog.CreateAll(), new ComplexityAnalyzer());
 
         vm.LoadGraph("ClearGraph");
         vm.GraphKind = GraphKind.DirectedWeighted;
@@ -159,15 +159,15 @@ public class DijkstraTests
         vm.SelectedEdge = vm.Edges[0];
         vm.UpdateSelectedEdgeWeight(1);
 
-        vm.DijkstraStartNode = a;
-        vm.DijkstraEndNode = b;
+        vm.SearchStartNode = a;
+        vm.SearchEndNode = b;
 
-        vm.RunDijkstraCommand.Execute(null);
-        vm.ClearDijkstraCommand.Execute(null);
+        vm.RunSearchCommand.Execute(null);
+        vm.ClearSearchCommand.Execute(null);
 
-        Assert.False(vm.IsDijkstraMode);
-        Assert.Empty(vm.DijkstraSteps);
-        Assert.Equal(-1, vm.CurrentDijkstraStepIndex);
+        Assert.False(vm.IsSearchMode);
+        Assert.Empty(vm.SearchSteps);
+        Assert.Equal(-1, vm.CurrentStepIndex);
         Assert.All(vm.Nodes, n =>
         {
             Assert.False(n.IsVisited);

@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using Avalonia;
 using Thesis.Algorithms;
 using Thesis.Models.Graph;
@@ -20,7 +20,7 @@ public class GraphEditorInteractionTests
     private static (GraphEditorViewModel Vm, JsonGraphRepository Repository) CreateEditor(TestFolder folder, GraphKind kind)
     {
         var repository = new JsonGraphRepository(folder.PathValue);
-        var vm = new GraphEditorViewModel(repository, new DijkstraSolver(), new ComplexityAnalyzer());
+        var vm = new GraphEditorViewModel(repository, PathAlgorithmCatalog.CreateAll(), new ComplexityAnalyzer());
 
         vm.LoadGraph("Graph");
         vm.GraphKind = kind;
@@ -28,6 +28,61 @@ public class GraphEditorInteractionTests
         vm.AddNodeAt(400, 100);
 
         return (vm, repository);
+    }
+
+    [Fact]
+    public void DraggingNodeFarAway_IsNotLimitedAndGrowsContentBounds()
+    {
+        using var folder = new TestFolder();
+        var (vm, _) = CreateEditor(folder, GraphKind.UndirectedUnweighted);
+
+        vm.OnCanvasLeftPressed(FirstCenter);
+        vm.OnCanvasPointerMoved(FirstCenter + new Point(3000, 2500));
+        vm.OnCanvasPointerReleased();
+
+        Assert.Equal(3100, vm.Nodes[0].X);
+        // Вторая вершина осталась в (400, 100), поэтому область — от неё до перетащенной
+        Assert.Equal(new Rect(400, 100, 2770, 2570), vm.ContentBounds);
+    }
+
+    [Fact]
+    public void DraggingNodeBeyondTopLeft_GoesIntoNegativeCoordinates()
+    {
+        using var folder = new TestFolder();
+        var (vm, _) = CreateEditor(folder, GraphKind.UndirectedUnweighted);
+
+        vm.OnCanvasLeftPressed(FirstCenter);
+        vm.OnCanvasPointerMoved(FirstCenter - new Point(500, 300));
+        vm.OnCanvasPointerReleased();
+
+        Assert.Equal(-400, vm.Nodes[0].X);
+        Assert.Equal(-200, vm.Nodes[0].Y);
+        Assert.Equal(new Point(-400, -200), vm.ContentBounds!.Value.TopLeft);
+    }
+
+    [Fact]
+    public void EmptyGraph_HasNoContentBounds()
+    {
+        using var folder = new TestFolder();
+        var vm = new GraphEditorViewModel(new JsonGraphRepository(folder.PathValue), PathAlgorithmCatalog.CreateAll(), new ComplexityAnalyzer());
+
+        vm.LoadGraph("Graph");
+
+        Assert.Null(vm.ContentBounds);
+    }
+
+    [Fact]
+    public void ContentBounds_IsNotifiedWhenNodeMoves()
+    {
+        using var folder = new TestFolder();
+        var (vm, _) = CreateEditor(folder, GraphKind.UndirectedUnweighted);
+        var notified = false;
+        vm.PropertyChanged += (_, e) => notified |= e.PropertyName == nameof(GraphEditorViewModel.ContentBounds);
+
+        vm.Nodes[1].X = 900;
+
+        Assert.True(notified);
+        Assert.Equal(970, vm.ContentBounds!.Value.Right);
     }
 
     [Fact]
@@ -135,12 +190,12 @@ public class GraphEditorInteractionTests
         vm.AddEdge(vm.Nodes[0], vm.Nodes[1]);
         vm.SelectedEdge = null;
 
-        vm.DijkstraStartNode = vm.Nodes[0];
-        vm.DijkstraEndNode = vm.Nodes[1];
-        vm.RunDijkstraCommand.Execute(null);
+        vm.SearchStartNode = vm.Nodes[0];
+        vm.SearchEndNode = vm.Nodes[1];
+        vm.RunSearchCommand.Execute(null);
 
         while (vm.CanGoToNextStep)
-            vm.NextDijkstraStepCommand.Execute(null);
+            vm.NextStepCommand.Execute(null);
 
         // Финальный шаг: конечная вершина текущая, начальная — на пути
         Assert.True(vm.Nodes[1].ShowCurrent);
@@ -166,5 +221,63 @@ public class GraphEditorInteractionTests
         removedNode!.X += 10;
 
         Assert.Equal(0, raised);
+    }
+
+    [Fact]
+    public void CompareAlgorithms_RunsEveryAlgorithmAndMarksBest()
+    {
+        using var folder = new TestFolder();
+        var (vm, _) = CreateEditor(folder, GraphKind.UndirectedWeighted);
+        vm.AddEdge(vm.Nodes[0], vm.Nodes[1]);
+        vm.SearchStartNode = vm.Nodes[0];
+        vm.SearchEndNode = vm.Nodes[1];
+
+        vm.CompareAlgorithmsCommand.Execute(null);
+
+        Assert.Equal(vm.Algorithms.Count, vm.ComparisonRows.Count);
+        Assert.Equal(vm.Algorithms.Count, vm.StepsRanking.Count);
+        Assert.NotEmpty(vm.ComparisonInsights);
+        Assert.All(vm.ComparisonRows, r => Assert.True(r.Found));
+        Assert.All(vm.ComparisonRows, r => Assert.True(r.IsBest));
+        Assert.True(vm.HasComparison);
+    }
+
+    [Fact]
+    public void ChangingAlgorithm_ClearsPreviousRun()
+    {
+        using var folder = new TestFolder();
+        var (vm, _) = CreateEditor(folder, GraphKind.UndirectedUnweighted);
+        vm.AddEdge(vm.Nodes[0], vm.Nodes[1]);
+        vm.SearchStartNode = vm.Nodes[0];
+        vm.SearchEndNode = vm.Nodes[1];
+        vm.RunSearchCommand.Execute(null);
+        Assert.True(vm.IsSearchMode);
+
+        vm.SelectedAlgorithm = vm.Algorithms.Single(a => a is BreadthFirstSearch);
+
+        Assert.False(vm.IsSearchMode);
+        Assert.Empty(vm.SearchSteps);
+        Assert.Contains("каждое ребро = 1", vm.AlgorithmPropertiesText);
+    }
+
+    [Fact]
+    public void BreadthFirstStep_MarksQueuedNodesAsFrontier()
+    {
+        using var folder = new TestFolder();
+        var (vm, _) = CreateEditor(folder, GraphKind.UndirectedUnweighted);
+        vm.AddNodeAt(400, 400);
+        vm.AddEdge(vm.Nodes[0], vm.Nodes[1]);
+        vm.AddEdge(vm.Nodes[0], vm.Nodes[2]);
+        vm.SelectedAlgorithm = vm.Algorithms.Single(a => a is BreadthFirstSearch);
+        vm.SearchStartNode = vm.Nodes[0];
+        vm.SearchEndNode = vm.Nodes[2];
+        vm.RunSearchCommand.Execute(null);
+
+        while (vm.CurrentStep!.Title != "Вершина обработана")
+            vm.NextStepCommand.Execute(null);
+
+        Assert.True(vm.Nodes[1].ShowFrontier);
+        Assert.True(vm.Nodes[2].ShowFrontier);
+        Assert.True(vm.Nodes[0].IsVisited);   // отображается как «текущая» — у неё приоритет
     }
 }

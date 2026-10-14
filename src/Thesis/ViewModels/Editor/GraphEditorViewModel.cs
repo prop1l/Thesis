@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
@@ -15,10 +15,7 @@ namespace Thesis.ViewModels.Editor;
 
 public partial class GraphEditorViewModel : ObservableObject
 {
-    private const double CanvasMaxCoordinate = 1960;
-
     private readonly IGraphRepository _repository;
-    private readonly IDijkstraSolver _dijkstraSolver;
     private readonly IComplexityAnalyzer _complexityAnalyzer;
     private readonly Dictionary<string, decimal> _logicalEdgeWeights = new();
     private string _currentGraphName = string.Empty;
@@ -36,20 +33,28 @@ public partial class GraphEditorViewModel : ObservableObject
     [ObservableProperty] private GraphKind graphKind = GraphKind.UndirectedUnweighted;
     [ObservableProperty] private GraphKindOption? selectedGraphKindOption;
 
-    [ObservableProperty] private NodeViewModel? dijkstraStartNode;
-    [ObservableProperty] private NodeViewModel? dijkstraEndNode;
-    [ObservableProperty] private int currentDijkstraStepIndex = -1;
-    [ObservableProperty] private bool isDijkstraMode;
-    [ObservableProperty] private string dijkstraStatus = "Алгоритм не запущен";
+    [ObservableProperty] private NodeViewModel? searchStartNode;
+    [ObservableProperty] private NodeViewModel? searchEndNode;
+    [ObservableProperty] private int currentStepIndex = -1;
+    [ObservableProperty] private bool isSearchMode;
+    [ObservableProperty] private string searchStatus = "Алгоритм не запущен";
+    [ObservableProperty] private IPathFindingAlgorithm selectedAlgorithm;
 
     [ObservableProperty] private string performanceSummary = string.Empty;
     [ObservableProperty] private IReadOnlyList<PerformancePoint> chartData = [];
 
-    [ObservableProperty] private string adjacencyMatrixText = string.Empty;
 
     public ObservableCollection<NodeViewModel> Nodes { get; } = new();
     public ObservableCollection<EdgeViewModel> Edges { get; } = new();
-    public ObservableCollection<DijkstraStep> DijkstraSteps { get; } = new();
+    public ObservableCollection<SearchStep> SearchSteps { get; } = new();
+
+    /// <summary>Алгоритмы поиска пути, доступные в редакторе.</summary>
+    public IReadOnlyList<IPathFindingAlgorithm> Algorithms { get; }
+
+
+    public string AlgorithmPropertiesText => SelectedAlgorithm is null ? string.Empty :
+        $"{(SelectedAlgorithm.UsesWeights ? "Учитывает веса рёбер" : "Веса не учитывает: каждое ребро = 1")} · " +
+        $"{(SelectedAlgorithm.GuaranteesShortestPath ? "гарантирует кратчайший путь" : "путь может быть не кратчайшим")}";
 
     public ObservableCollection<GraphKindOption> GraphKindOptions { get; } = new(
         Enum.GetValues<GraphKind>().Select(kind => new GraphKindOption { Value = kind, Title = kind.ToTitle() }));
@@ -62,6 +67,23 @@ public partial class GraphEditorViewModel : ObservableObject
     public bool IsWeightedGraph =>
         GraphKind is GraphKind.DirectedWeighted or GraphKind.UndirectedWeighted;
 
+    /// <summary>
+    /// Область, занятая вершинами (в координатах графа, могут быть отрицательными).
+    /// По ней View подбирает размер холста; у пустого графа — null.
+    /// </summary>
+    public Rect? ContentBounds
+    {
+        get
+        {
+            if (Nodes.Count == 0)
+                return null;
+
+            var left = Nodes.Min(n => n.X);
+            var top = Nodes.Min(n => n.Y);
+            return new Rect(left, top, Nodes.Max(n => n.X + n.Width) - left, Nodes.Max(n => n.Y + n.Height) - top);
+        }
+    }
+
     public int NodesCount => Nodes.Count;
     public bool IsGraphEmpty => Nodes.Count == 0;
     public int EdgesCount => Edges.Count;
@@ -69,44 +91,61 @@ public partial class GraphEditorViewModel : ObservableObject
     public bool IsEdgeSelected => SelectedEdge is not null;
     public bool IsNothingSelected => SelectedNode is null && SelectedEdge is null;
 
-    public bool CanGoToPreviousStep => CurrentDijkstraStepIndex > 0;
-    public bool CanGoToNextStep => CurrentDijkstraStepIndex >= 0 && CurrentDijkstraStepIndex < DijkstraSteps.Count - 1;
-    public bool CanRunDijkstra => DijkstraStartNode is not null && DijkstraEndNode is not null && DijkstraStartNode != DijkstraEndNode;
+    public bool CanGoToPreviousStep => CurrentStepIndex > 0;
+    public bool CanGoToNextStep => CurrentStepIndex >= 0 && CurrentStepIndex < SearchSteps.Count - 1;
+    public bool CanRunSearch => SearchStartNode is not null && SearchEndNode is not null && SearchStartNode != SearchEndNode;
 
     public double ZoomLevel
     {
         get => _zoomLevel;
-        set => SetProperty(ref _zoomLevel, Math.Clamp(value, 0.5, 1.5));
+        set
+        {
+            value = Math.Clamp(value, MinZoom, MaxZoom);
+
+            // Без округления на каждом шаге (оно копится: 12 щелчков туда-обратно давали 100,5 %),
+            // но после возврата к исходному масштабу ровно 100 % вместо 1.0000000000000002
+            if (Math.Abs(value - 1.0) < 1e-6)
+                value = 1.0;
+
+            SetProperty(ref _zoomLevel, value);
+        }
     }
 
+    public const double MinZoom = 0.25;
+    public const double MaxZoom = 2.0;
+
     /// <summary>«Шаг 3 из 17» — чтобы было понятно, где мы в ходе алгоритма.</summary>
-    public string StepCounterText => CurrentDijkstraStep is null
+    public string StepCounterText => CurrentStep is null
         ? string.Empty
-        : $"Шаг {CurrentDijkstraStepIndex + 1} из {DijkstraSteps.Count}";
+        : $"Шаг {CurrentStepIndex + 1} из {SearchSteps.Count}";
 
-    public double StepProgress => DijkstraSteps.Count == 0
+    public double StepProgress => SearchSteps.Count == 0
         ? 0
-        : (CurrentDijkstraStepIndex + 1) * 100.0 / DijkstraSteps.Count;
+        : (CurrentStepIndex + 1) * 100.0 / SearchSteps.Count;
 
-    public DijkstraStep? CurrentDijkstraStep =>
-        CurrentDijkstraStepIndex >= 0 && CurrentDijkstraStepIndex < DijkstraSteps.Count
-            ? DijkstraSteps[CurrentDijkstraStepIndex]
+    public SearchStep? CurrentStep =>
+        CurrentStepIndex >= 0 && CurrentStepIndex < SearchSteps.Count
+            ? SearchSteps[CurrentStepIndex]
             : null;
 
     public GraphEditorViewModel(
         IGraphRepository repository,
-        IDijkstraSolver dijkstraSolver,
+        IReadOnlyList<IPathFindingAlgorithm> algorithms,
         IComplexityAnalyzer complexityAnalyzer)
     {
         _repository = repository;
-        _dijkstraSolver = dijkstraSolver;
+        Algorithms = algorithms;
+        selectedAlgorithm = algorithms[0];
         _complexityAnalyzer = complexityAnalyzer;
 
-        Nodes.CollectionChanged += (_, _) => NotifyState();
+        Nodes.CollectionChanged += OnNodesCollectionChanged;
         Edges.CollectionChanged += OnEdgesCollectionChanged;
 
         SubscribeToGraphStyle(GraphStyle);
         SelectedGraphKindOption = GraphKindOptions.FirstOrDefault(x => x.Value == GraphKind);
+
+        // График теоретической сложности не зависит от графа — строим сразу, чтобы вкладка не была пустой
+        BuildPerformanceChart();
     }
 
     #region Loading and saving
@@ -120,7 +159,7 @@ public partial class GraphEditorViewModel : ObservableObject
 
         var data = _repository.LoadGraph(graphName);
 
-        ClearDijkstra();
+        ClearSearch();
         ClearGraph();
 
         GraphStyle = data.Style ?? new GraphStyle();
@@ -150,6 +189,7 @@ public partial class GraphEditorViewModel : ObservableObject
 
         _isGraphLoaded = true;
         UpdateAdjacencyMatrix();
+        ResetHistory();
     }
 
     public void SaveGraph()
@@ -210,14 +250,15 @@ public partial class GraphEditorViewModel : ObservableObject
         var node = new Node
         {
             Label = $"Вершина {Nodes.Count + 1}",
-            X = Math.Clamp(x, 0, CanvasMaxCoordinate),
-            Y = Math.Clamp(y, 0, CanvasMaxCoordinate)
+            X = x,
+            Y = y
         };
 
         Nodes.Add(new NodeViewModel(node, GraphStyle.Node));
 
         SaveGraph();
         UpdateAdjacencyMatrix();
+        RecordChange();
     }
 
     public void AddEdge(NodeViewModel source, NodeViewModel target)
@@ -255,6 +296,7 @@ public partial class GraphEditorViewModel : ObservableObject
 
         SaveGraph();
         UpdateAdjacencyMatrix();
+        RecordChange();
     }
 
     [RelayCommand]
@@ -262,10 +304,11 @@ public partial class GraphEditorViewModel : ObservableObject
     {
         SelectedNode = null;
         SelectedEdge = null;
-        ClearDijkstra();
+        ClearSearch();
         ClearGraph();
         SaveGraph();
         UpdateAdjacencyMatrix();
+        RecordChange();
     }
 
     [RelayCommand]
@@ -289,9 +332,10 @@ public partial class GraphEditorViewModel : ObservableObject
             Edges.Remove(edge);
         }
 
-        ClearDijkstra();
+        ClearSearch();
         SaveGraph();
         UpdateAdjacencyMatrix();
+        RecordChange();
     }
 
     public void UpdateSelectedEdgeWeight(decimal? newWeight)
@@ -314,7 +358,10 @@ public partial class GraphEditorViewModel : ObservableObject
         }
 
         foreach (var node in Nodes)
+        {
+            node.PropertyChanged -= OnNodePropertyChanged;
             node.Detach();
+        }
 
         Edges.Clear();
         Nodes.Clear();
@@ -369,6 +416,47 @@ public partial class GraphEditorViewModel : ObservableObject
             _logicalEdgeWeights.TryAdd(GetUndirectedPairKey(edge.SourceId, edge.TargetId), edge.Weight!.Value);
     }
 
+    private void OnNodesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (NodeViewModel node in e.OldItems)
+                node.PropertyChanged -= OnNodePropertyChanged;
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (NodeViewModel node in e.NewItems)
+                node.PropertyChanged += OnNodePropertyChanged;
+        }
+
+        NotifyState();
+        OnPropertyChanged(nameof(ContentBounds));
+    }
+
+    private void OnNodePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not NodeViewModel node)
+            return;
+
+        switch (e.PropertyName)
+        {
+            case nameof(NodeViewModel.X):
+            case nameof(NodeViewModel.Y):
+                OnPropertyChanged(nameof(ContentBounds));
+                RecordChange($"move:{node.Id}");
+                break;
+            case nameof(NodeViewModel.Width):
+            case nameof(NodeViewModel.Height):
+                OnPropertyChanged(nameof(ContentBounds));
+                break;
+            case nameof(NodeViewModel.Label):
+                UpdateAdjacencyMatrix();
+                RecordChange($"label:{node.Id}");
+                break;
+        }
+    }
+
     private void OnEdgesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.OldItems is not null)
@@ -391,6 +479,12 @@ public partial class GraphEditorViewModel : ObservableObject
 
     private void OnEdgePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(EdgeViewModel.Label) && sender is EdgeViewModel labeledEdge)
+        {
+            RecordChange($"edge-label:{labeledEdge.Id}");
+            return;
+        }
+
         if (_suppressWeightSync ||
             e.PropertyName != nameof(EdgeViewModel.Weight) ||
             sender is not EdgeViewModel edge ||
@@ -402,6 +496,7 @@ public partial class GraphEditorViewModel : ObservableObject
         SyncLinkedEdgeWeights(edge.SourceId, edge.TargetId, weight);
         SaveGraph();
         UpdateAdjacencyMatrix();
+        RecordChange($"weight:{edge.Id}");
     }
 
     #endregion
@@ -489,8 +584,9 @@ public partial class GraphEditorViewModel : ObservableObject
         if (_dragNode is null)
             return;
 
-        _dragNode.X = Math.Clamp(_nodeStart.X + position.X - _dragStart.X, 0, CanvasMaxCoordinate);
-        _dragNode.Y = Math.Clamp(_nodeStart.Y + position.Y - _dragStart.Y, 0, CanvasMaxCoordinate);
+        // Холст бесконечный, поэтому координаты ничем не ограничены (в том числе могут уйти в минус)
+        _dragNode.X = _nodeStart.X + position.X - _dragStart.X;
+        _dragNode.Y = _nodeStart.Y + position.Y - _dragStart.Y;
     }
 
     public void OnCanvasPointerReleased()
@@ -499,23 +595,13 @@ public partial class GraphEditorViewModel : ObservableObject
             SaveGraph();
 
         _dragNode = null;
+        EndChangeGroup();
     }
 
     public void CancelEdgeCreation()
     {
         _edgeStartNode = null;
         IsCreatingEdge = false;
-    }
-
-    /// <summary>Центр области, занятой вершинами, — чтобы прокрутить к графу при открытии окна.</summary>
-    public Point? GetGraphCenter()
-    {
-        if (Nodes.Count == 0)
-            return null;
-
-        return new Point(
-            (Nodes.Min(n => n.X) + Nodes.Max(n => n.X)) / 2,
-            (Nodes.Min(n => n.Y) + Nodes.Max(n => n.Y)) / 2);
     }
 
     #endregion
@@ -540,57 +626,64 @@ public partial class GraphEditorViewModel : ObservableObject
         ZoomLevel = 1.0;
     }
 
+    /// <summary>Ctrl + колёсико: каждый «щелчок» меняет масштаб в 1.1 раза.</summary>
+    public void ZoomByWheel(double wheelDelta)
+    {
+        ZoomLevel *= Math.Pow(1.1, wheelDelta);
+    }
+
     #endregion
 
-    #region Dijkstra
+    #region Path search
 
     [RelayCommand]
-    private void RunDijkstra()
+    private void RunSearch()
     {
-        if (DijkstraStartNode is null || DijkstraEndNode is null)
+        if (SearchStartNode is null || SearchEndNode is null)
             return;
 
-        var steps = _dijkstraSolver.BuildSteps(
-            GetVertices(), GetArcs(), IsDirectedGraph, DijkstraStartNode.Id, DijkstraEndNode.Id);
+        var steps = SelectedAlgorithm.BuildSteps(
+            GetVertices(), GetArcs(), IsDirectedGraph, SearchStartNode.Id, SearchEndNode.Id);
 
-        DijkstraSteps.Clear();
+        SearchSteps.Clear();
         foreach (var step in steps)
-            DijkstraSteps.Add(step);
+            SearchSteps.Add(step);
 
-        CurrentDijkstraStepIndex = DijkstraSteps.Count > 0 ? 0 : -1;
-        IsDijkstraMode = DijkstraSteps.Count > 0;
-        DijkstraStatus = CurrentDijkstraStep?.Description ?? "Алгоритм не запущен";
+        CurrentStepIndex = SearchSteps.Count > 0 ? 0 : -1;
+        IsSearchMode = SearchSteps.Count > 0;
+        SearchStatus = CurrentStep?.Description ?? "Алгоритм не запущен";
 
-        ApplyCurrentDijkstraStep();
+        ApplyCurrentStep();
     }
 
     [RelayCommand]
-    private void NextDijkstraStep()
+    private void NextStep()
     {
-        if (CurrentDijkstraStepIndex >= DijkstraSteps.Count - 1)
+        if (CurrentStepIndex >= SearchSteps.Count - 1)
             return;
 
-        CurrentDijkstraStepIndex++;
-        ApplyCurrentDijkstraStep();
+        CurrentStepIndex++;
+        ApplyCurrentStep();
     }
 
     [RelayCommand]
-    private void PreviousDijkstraStep()
+    private void PreviousStep()
     {
-        if (CurrentDijkstraStepIndex <= 0)
+        if (CurrentStepIndex <= 0)
             return;
 
-        CurrentDijkstraStepIndex--;
-        ApplyCurrentDijkstraStep();
+        CurrentStepIndex--;
+        ApplyCurrentStep();
     }
 
     [RelayCommand]
-    private void ClearDijkstra()
+    private void ClearSearch()
     {
-        DijkstraSteps.Clear();
-        CurrentDijkstraStepIndex = -1;
-        IsDijkstraMode = false;
-        DijkstraStatus = "Алгоритм не запущен";
+        SearchSteps.Clear();
+        ClearComparison();
+        CurrentStepIndex = -1;
+        IsSearchMode = false;
+        SearchStatus = "Алгоритм не запущен";
 
         foreach (var node in Nodes)
             node.ResetAlgorithmState();
@@ -605,19 +698,20 @@ public partial class GraphEditorViewModel : ObservableObject
         NotifyStepState();
     }
 
-    private void ApplyCurrentDijkstraStep()
+    private void ApplyCurrentStep()
     {
-        var step = CurrentDijkstraStep;
+        var step = CurrentStep;
         if (step is null)
             return;
 
-        DijkstraStatus = step.Description;
+        SearchStatus = step.Description;
 
         foreach (var node in Nodes)
         {
             node.IsVisited = step.VisitedNodeIds.Contains(node.Id);
             node.IsCurrent = node.Id == step.CurrentNodeId;
             node.IsOnPath = step.FinalPathNodeIds.Contains(node.Id);
+            node.IsInFrontier = step.FrontierNodeIds.Contains(node.Id);
 
             node.DistanceLabel = step.Distances.TryGetValue(node.Id, out var distance) && distance != decimal.MaxValue
                 ? distance.ToString()
@@ -636,32 +730,10 @@ public partial class GraphEditorViewModel : ObservableObject
 
     #endregion
 
-    #region Analysis
-
-    [RelayCommand]
-    private void BuildPerformanceChart()
-    {
-        var report = _complexityAnalyzer.BuildComplexityReport();
-        ChartData = report.Points;
-        PerformanceSummary = report.Summary;
-    }
-
-    [RelayCommand]
-    private void BuildAdjacencyMatrix()
-    {
-        UpdateAdjacencyMatrix();
-    }
-
-    public string GetAdjacencyMatrixText() =>
-        AdjacencyMatrix.BuildText(GetVertices(), GetArcs(), IsDirectedGraph, IsWeightedGraph);
-
-    private void UpdateAdjacencyMatrix()
-    {
-        AdjacencyMatrixText = GetAdjacencyMatrixText();
-    }
+    #region Graph snapshot
 
     private List<GraphVertex> GetVertices() =>
-        Nodes.Select(n => new GraphVertex(n.Id, n.Label)).ToList();
+        Nodes.Select(n => new GraphVertex(n.Id, n.Label, n.Center.X, n.Center.Y)).ToList();
 
     private List<GraphArc> GetArcs() =>
         Edges.Select(e => new GraphArc(e.Id, e.SourceId, e.TargetId, e.Label, e.Weight)).ToList();
@@ -727,13 +799,14 @@ public partial class GraphEditorViewModel : ObservableObject
             _suppressWeightSync = false;
         }
 
-        ClearDijkstra();
+        ClearSearch();
 
         OnPropertyChanged(nameof(IsDirectedGraph));
         OnPropertyChanged(nameof(IsWeightedGraph));
         OnPropertyChanged(nameof(GraphKindTitle));
         UpdateAdjacencyMatrix();
         SaveGraph();
+        RecordChange();
     }
 
     partial void OnSelectedGraphKindOptionChanged(GraphKindOption? value)
@@ -742,17 +815,24 @@ public partial class GraphEditorViewModel : ObservableObject
             GraphKind = value.Value;
     }
 
-    partial void OnDijkstraStartNodeChanged(NodeViewModel? value)
+    partial void OnSearchStartNodeChanged(NodeViewModel? value)
     {
-        OnPropertyChanged(nameof(CanRunDijkstra));
+        OnPropertyChanged(nameof(CanRunSearch));
     }
 
-    partial void OnDijkstraEndNodeChanged(NodeViewModel? value)
+    partial void OnSelectedAlgorithmChanged(IPathFindingAlgorithm value)
     {
-        OnPropertyChanged(nameof(CanRunDijkstra));
+        // Шаги прошлого алгоритма к новому не относятся
+        ClearSearch();
+        OnPropertyChanged(nameof(AlgorithmPropertiesText));
     }
 
-    partial void OnCurrentDijkstraStepIndexChanged(int value)
+    partial void OnSearchEndNodeChanged(NodeViewModel? value)
+    {
+        OnPropertyChanged(nameof(CanRunSearch));
+    }
+
+    partial void OnCurrentStepIndexChanged(int value)
     {
         NotifyStepState();
     }
@@ -778,7 +858,7 @@ public partial class GraphEditorViewModel : ObservableObject
         OnPropertyChanged(nameof(NodesCount));
         OnPropertyChanged(nameof(IsGraphEmpty));
         OnPropertyChanged(nameof(EdgesCount));
-        OnPropertyChanged(nameof(CanRunDijkstra));
+        OnPropertyChanged(nameof(CanRunSearch));
         NotifySelection();
     }
 
@@ -791,7 +871,7 @@ public partial class GraphEditorViewModel : ObservableObject
 
     private void NotifyStepState()
     {
-        OnPropertyChanged(nameof(CurrentDijkstraStep));
+        OnPropertyChanged(nameof(CurrentStep));
         OnPropertyChanged(nameof(CanGoToNextStep));
         OnPropertyChanged(nameof(CanGoToPreviousStep));
         OnPropertyChanged(nameof(StepCounterText));

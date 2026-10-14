@@ -17,7 +17,7 @@
     <Window.Styles>
         <!-- Карточка графа — это кнопка: клик открывает редактор -->
         <Style Selector="Button.graph-card">
-            <Setter Property="Width" Value="360"/>
+            <Setter Property="Width" Value="350"/>
             <Setter Property="Margin" Value="0,0,16,16"/>
             <Setter Property="Padding" Value="18,16"/>
             <Setter Property="CornerRadius" Value="12"/>

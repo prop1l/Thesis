@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using Avalonia;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -19,16 +19,21 @@ public partial class NodeViewModel : ObservableObject
     private bool isSelected;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowCurrent), nameof(ShowPath), nameof(ShowVisited), nameof(IsHighlighted))]
+    [NotifyPropertyChangedFor(nameof(ShowCurrent), nameof(ShowPath), nameof(ShowFrontier), nameof(ShowVisited), nameof(IsHighlighted))]
     private bool isCurrent;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowPath), nameof(ShowVisited), nameof(IsHighlighted))]
+    [NotifyPropertyChangedFor(nameof(ShowPath), nameof(ShowFrontier), nameof(ShowVisited), nameof(IsHighlighted))]
     private bool isOnPath;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowVisited))]
     private bool isVisited;
+
+    /// <summary>Вершина ждёт обработки: в очереди, стеке или открытом множестве алгоритма.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowFrontier), nameof(ShowVisited))]
+    private bool isInFrontier;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayText), nameof(FontSize))]
@@ -85,7 +90,8 @@ public partial class NodeViewModel : ObservableObject
     // Выделение (IsSelected) рисуется отдельно — акцентной обводкой поверх любого состояния.
     public bool ShowCurrent => IsCurrent;
     public bool ShowPath => !IsCurrent && IsOnPath;
-    public bool ShowVisited => !IsCurrent && !IsOnPath && IsVisited;
+    public bool ShowFrontier => !IsCurrent && !IsOnPath && IsInFrontier;
+    public bool ShowVisited => !IsCurrent && !IsOnPath && !IsInFrontier && IsVisited;
 
     public string DisplayText => string.IsNullOrWhiteSpace(DistanceLabel)
         ? Label
@@ -104,6 +110,7 @@ public partial class NodeViewModel : ObservableObject
         IsVisited = false;
         IsCurrent = false;
         IsOnPath = false;
+        IsInFrontier = false;
         DistanceLabel = string.Empty;
     }
 

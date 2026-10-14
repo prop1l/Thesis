@@ -35,7 +35,7 @@ namespace Thesis
                         services.AddSingleton<IThemeService, ThemeService>();
                         services.AddSingleton<IGraphRepository>(_ => new JsonGraphRepository(JsonGraphRepository.DefaultFolder));
                         services.AddSingleton<IWindowService, WindowService>();
-                        services.AddSingleton<IDijkstraSolver, DijkstraSolver>();
+                        services.AddSingleton(_ => PathAlgorithmCatalog.CreateAll());
                         services.AddSingleton<IComplexityAnalyzer, ComplexityAnalyzer>();
 
                         //Windows

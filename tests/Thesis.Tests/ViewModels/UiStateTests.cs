@@ -167,7 +167,7 @@ public class UiStateTests
     public void Editor_StepCounterAndEmptyState()
     {
         using var folder = new TestFolder();
-        var vm = new GraphEditorViewModel(new JsonGraphRepository(folder.PathValue), new DijkstraSolver(), new ComplexityAnalyzer());
+        var vm = new GraphEditorViewModel(new JsonGraphRepository(folder.PathValue), PathAlgorithmCatalog.CreateAll(), new ComplexityAnalyzer());
         vm.LoadGraph("G");
         Assert.True(vm.IsGraphEmpty);
 
@@ -177,11 +177,11 @@ public class UiStateTests
         Assert.Equal(165, vm.Nodes[0].X); // центр в точке клика, вершина 70×70
 
         vm.AddEdge(vm.Nodes[0], vm.Nodes[1]);
-        vm.DijkstraStartNode = vm.Nodes[0];
-        vm.DijkstraEndNode = vm.Nodes[1];
-        vm.RunDijkstraCommand.Execute(null);
+        vm.SearchStartNode = vm.Nodes[0];
+        vm.SearchEndNode = vm.Nodes[1];
+        vm.RunSearchCommand.Execute(null);
 
-        Assert.Equal($"Шаг 1 из {vm.DijkstraSteps.Count}", vm.StepCounterText);
+        Assert.Equal($"Шаг 1 из {vm.SearchSteps.Count}", vm.StepCounterText);
         Assert.True(vm.StepProgress > 0);
     }
 }
